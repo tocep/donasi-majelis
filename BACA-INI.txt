@@ -1,0 +1,27 @@
+===================================================
+  FOLDER IMAGES — Panduan Pengisian Foto & QRIS
+===================================================
+
+Letakkan file-file berikut di folder ini (images/):
+
+1. QRIS
+   - Nama file  : qris.png
+   - Isi        : Screenshot/foto kode QRIS untuk donasi
+
+2. GALERI FOTO
+   - gallery-1.jpg  → Kondisi majelis saat ini
+   - gallery-2.jpg  → Tampak depan majelis
+   - gallery-3.jpg  → Ruang utama pengajian
+   - gallery-4.jpg  → Rencana pembangunan
+   - gallery-5.jpg  → Kegiatan pengajian rutin
+   - gallery-6.jpg  → Jamaah Majelis Nuruzh Zholam
+
+   Format yang didukung: .jpg, .jpeg, .png, .webp
+   Ukuran disarankan  : max 500 KB per foto (agar load cepat di HP)
+
+CATATAN:
+- Foto yang belum ada akan tampil sebagai placeholder abu-abu
+- Judul/keterangan foto bisa diubah di file script.js (bagian DATA.galeri)
+- Untuk menambah/kurangi foto, edit array DATA.galeri di script.js
+
+===================================================
