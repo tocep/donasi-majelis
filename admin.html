@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Admin Donasi Majelis Nuruzh Zholam</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a3a5c'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-size='34' fill='white'%3E%E2%98%AA%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=20260501-2" />
+</head>
+<body class="admin-body">
+  <main class="admin-shell">
+    <section class="admin-login" id="login-view">
+      <div class="admin-login-card">
+        <p class="admin-kicker">Panel Panitia</p>
+        <h1>Admin Website Donasi</h1>
+        <p>Masuk dengan akun Supabase Auth yang sudah dibuat untuk panitia.</p>
+        <form id="login-form" class="admin-form">
+          <label>
+            Email
+            <input type="email" id="login-email" autocomplete="email" required />
+          </label>
+          <label>
+            Password
+            <input type="password" id="login-password" autocomplete="current-password" required />
+          </label>
+          <button type="submit" class="admin-btn admin-btn-primary">Masuk</button>
+        </form>
+        <p class="admin-muted" id="login-status">Konfigurasi Supabase harus diisi sebelum login.</p>
+      </div>
+    </section>
+
+    <section class="admin-dashboard" id="dashboard-view" hidden>
+      <header class="admin-header">
+        <div>
+          <p class="admin-kicker">Dashboard</p>
+          <h1>Kelola Website Donasi</h1>
+        </div>
+        <div class="admin-header-actions">
+          <a href="index.html" class="admin-btn admin-btn-light">Lihat Website</a>
+          <button type="button" class="admin-btn admin-btn-danger" id="logout-btn">Keluar</button>
+        </div>
+      </header>
+
+      <nav class="admin-tabs" aria-label="Menu admin">
+        <button type="button" class="admin-tab active" data-admin-tab="summary">Ringkasan</button>
+        <button type="button" class="admin-tab" data-admin-tab="donors">Donatur</button>
+        <button type="button" class="admin-tab" data-admin-tab="report">Laporan Dana</button>
+        <button type="button" class="admin-tab" data-admin-tab="payments">Metode Donasi</button>
+        <button type="button" class="admin-tab" data-admin-tab="contacts">Kontak</button>
+        <button type="button" class="admin-tab" data-admin-tab="updates">Update Pembangunan</button>
+        <button type="button" class="admin-tab" data-admin-tab="gallery">Galeri</button>
+        <button type="button" class="admin-tab" data-admin-tab="profile">Profil Majelis</button>
+      </nav>
+
+      <section class="admin-panel active" id="panel-summary">
+        <div class="admin-grid admin-summary-grid" id="summary-cards"></div>
+      </section>
+
+      <section class="admin-panel" id="panel-donors">
+        <div class="admin-card">
+          <div class="admin-card-head">
+            <h2>Donatur</h2>
+            <button type="button" class="admin-btn admin-btn-primary" data-open-form="donor">Tambah Donatur</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Nama</th><th>Nominal</th><th>Tanggal</th><th>Aksi</th></tr></thead>
+              <tbody id="donors-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-panel" id="panel-report">
+        <div class="admin-card">
+          <h2>Laporan Dana</h2>
+          <form id="report-form" class="admin-form admin-form-grid">
+            <label>
+              Target Donasi
+              <input type="number" id="donation-target" min="0" step="1000" required />
+            </label>
+            <label>
+              Dana Terpakai
+              <input type="number" id="funds-used" min="0" step="1000" required />
+            </label>
+            <label>
+              Tanggal Laporan
+              <input type="date" id="report-date" required />
+            </label>
+            <label class="admin-span-2">
+              Catatan Laporan
+              <textarea id="report-note" rows="4" required></textarea>
+            </label>
+            <label class="admin-span-2">
+              URL QRIS
+              <input type="url" id="qris-url" placeholder="https://..." />
+            </label>
+            <label class="admin-span-2">
+              Upload QRIS
+              <input type="file" id="qris-file" accept="image/*" />
+            </label>
+            <button type="submit" class="admin-btn admin-btn-primary">Simpan Laporan</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="admin-panel" id="panel-payments">
+        <div class="admin-card">
+          <div class="admin-card-head">
+            <h2>Metode Donasi</h2>
+            <button type="button" class="admin-btn admin-btn-primary" data-open-form="payment">Tambah Metode</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Tipe</th><th>Nama</th><th>Nomor</th><th>a.n.</th><th>Aksi</th></tr></thead>
+              <tbody id="payments-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-panel" id="panel-contacts">
+        <div class="admin-card">
+          <div class="admin-card-head">
+            <h2>Kontak Panitia</h2>
+            <button type="button" class="admin-btn admin-btn-primary" data-open-form="contact">Tambah Kontak</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Jabatan</th><th>Nama</th><th>WhatsApp</th><th>Aksi</th></tr></thead>
+              <tbody id="contacts-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-panel" id="panel-updates">
+        <div class="admin-card">
+          <div class="admin-card-head">
+            <h2>Update Pembangunan</h2>
+            <button type="button" class="admin-btn admin-btn-primary" data-open-form="update">Tambah Update</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Tanggal</th><th>Judul</th><th>Deskripsi</th><th>Aksi</th></tr></thead>
+              <tbody id="updates-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-panel" id="panel-gallery">
+        <div class="admin-card">
+          <div class="admin-card-head">
+            <h2>Galeri</h2>
+            <button type="button" class="admin-btn admin-btn-primary" data-open-form="gallery">Tambah Foto</button>
+          </div>
+          <div class="admin-gallery-grid" id="gallery-body"></div>
+        </div>
+      </section>
+
+      <section class="admin-panel" id="panel-profile">
+        <div class="admin-card">
+          <h2>Profil Majelis</h2>
+          <form id="profile-form" class="admin-form admin-form-grid">
+            <label>
+              Nama Majelis
+              <input type="text" id="majelis-name" required />
+            </label>
+            <label>
+              Program
+              <input type="text" id="majelis-program" required />
+            </label>
+            <label class="admin-span-2">
+              Alamat
+              <textarea id="majelis-address" rows="3" required></textarea>
+            </label>
+            <label class="admin-span-2">
+              Pesan WhatsApp
+              <textarea id="whatsapp-message" rows="3" required></textarea>
+            </label>
+            <label class="admin-span-2">
+              URL Foto Majelis
+              <input type="url" id="majelis-photo-url" placeholder="https://..." />
+            </label>
+            <label class="admin-span-2">
+              Upload Foto Majelis
+              <input type="file" id="majelis-photo-file" accept="image/*" />
+            </label>
+            <button type="submit" class="admin-btn admin-btn-primary">Simpan Profil</button>
+          </form>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <dialog class="admin-modal" id="admin-modal">
+    <form method="dialog" class="admin-modal-card" id="modal-form">
+      <div class="admin-card-head">
+        <h2 id="modal-title">Form</h2>
+        <button type="button" class="admin-icon-btn" id="modal-close" aria-label="Tutup">x</button>
+      </div>
+      <div id="modal-fields" class="admin-form"></div>
+      <div class="admin-modal-actions">
+        <button type="button" class="admin-btn admin-btn-light" id="modal-cancel">Batal</button>
+        <button type="submit" class="admin-btn admin-btn-primary">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js?v=20260501-6"></script>
+  <script src="admin.js?v=20260501-6"></script>
+</body>
+</html>

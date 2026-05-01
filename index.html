@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Donasi Pembangunan Majelis Nuruzh Zholam — Mari bersama membangun rumah Allah." />
+  <meta name="theme-color" content="#1a3a5c" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="id_ID" />
+  <meta property="og:title" content="Donasi Pembangunan Majelis Nuruzh Zholam" />
+  <meta property="og:description" content="Mari bersama mewujudkan majelis yang layak untuk ibadah, pengajian, dan pembinaan umat." />
+  <title>Donasi Majelis Nuruzh Zholam</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a3a5c'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-size='34' fill='white'%3E%E2%98%AA%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <header class="navbar" id="navbar">
+    <div class="container nav-inner">
+      <a href="#beranda" class="nav-brand">
+        <span class="nav-logo">☪</span>
+        <span class="nav-title">Majelis Nuruzh Zholam</span>
+      </a>
+      <button class="hamburger" id="hamburger" aria-label="Buka menu" aria-controls="nav-menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="nav-menu" id="nav-menu">
+        <a href="#beranda" class="nav-link">Beranda</a>
+        <a href="#progress" class="nav-link">Progress</a>
+        <a href="#transparansi" class="nav-link">Transparansi</a>
+        <a href="#donasi" class="nav-link">Cara Donasi</a>
+        <a href="#galeri" class="nav-link">Galeri</a>
+        <a href="#donatur" class="nav-link">Donatur</a>
+        <a href="#kontak" class="nav-link">Kontak</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===== HERO ===== -->
+  <section class="hero" id="beranda">
+    <div class="hero-overlay"></div>
+    <div class="container hero-content">
+      <p class="hero-ayat">"Barang siapa membangun masjid karena Allah, maka Allah akan membangun baginya rumah di surga."</p>
+      <p class="hero-ayat-source">— HR. Bukhari & Muslim</p>
+      <h1 class="hero-title">Donasi Pembangunan<br/>Majelis Nuruzh Zholam</h1>
+      <p class="hero-subtitle">Mari bersama-sama mewujudkan rumah Allah yang layak sebagai tempat ibadah, pengajian, dan pembinaan umat.</p>
+      <div class="hero-actions">
+        <a href="#donasi" class="btn btn-primary">Donasi Sekarang</a>
+        <a href="#progress" class="btn btn-outline">Lihat Progress</a>
+      </div>
+    </div>
+    <div class="hero-wave">
+      <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#f0f4f8"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ===== PROGRESS ===== -->
+  <section class="section bg-light" id="progress">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Progress Donasi</h2>
+        <p class="section-subtitle">Setiap rupiah yang Anda sumbangkan membawa kami selangkah lebih dekat ke tujuan</p>
+      </div>
+      <div class="progress-card">
+        <div class="progress-stats">
+          <div class="stat">
+            <span class="stat-label">Terkumpul</span>
+            <span class="stat-value" id="stat-terkumpul">Rp 0</span>
+          </div>
+          <div class="stat stat-center">
+            <span class="stat-label">Donatur</span>
+            <span class="stat-value" id="stat-donatur">0</span>
+          </div>
+          <div class="stat stat-right">
+            <span class="stat-label">Target</span>
+            <span class="stat-value" id="stat-target">Rp 0</span>
+          </div>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progress-bar">
+            <span class="progress-pct" id="progress-pct">0%</span>
+          </div>
+        </div>
+        <p class="progress-note" id="progress-note">Bantu kami mencapai target. Setiap donasi sangat berarti!</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TRANSPARANSI ===== -->
+  <section class="section" id="transparansi">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Transparansi Dana</h2>
+        <p class="section-subtitle">Ringkasan dana masuk, penggunaan, dan update pembangunan yang diperbarui panitia.</p>
+      </div>
+
+      <div class="transparency-layout">
+        <div class="transparency-panel">
+          <div class="panel-heading">
+            <h3>Ringkasan Dana</h3>
+            <span id="laporan-update">Belum diperbarui</span>
+          </div>
+          <div class="fund-grid" id="fund-grid">
+            <!-- Diisi dari script.js -->
+          </div>
+          <p class="transparency-note" id="laporan-catatan">Data laporan akan diperbarui oleh panitia.</p>
+        </div>
+
+        <div class="transparency-panel">
+          <div class="panel-heading">
+            <h3>Update Pembangunan</h3>
+            <span>Terbaru</span>
+          </div>
+          <div class="update-list" id="update-list">
+            <!-- Diisi dari script.js -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CARA DONASI ===== -->
+  <section class="section" id="donasi">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Cara Berdonasi</h2>
+        <p class="section-subtitle">Pilih metode pembayaran yang paling mudah untuk Anda</p>
+      </div>
+
+      <!-- Tab buttons -->
+      <div class="tab-buttons" role="tablist">
+        <button class="tab-btn active" id="tab-btn-bank" data-tab="bank" role="tab" aria-selected="true" aria-controls="tab-bank">🏦 Transfer Bank</button>
+        <button class="tab-btn" id="tab-btn-qris" data-tab="qris" role="tab" aria-selected="false" aria-controls="tab-qris">📱 QRIS</button>
+        <button class="tab-btn" id="tab-btn-ewallet" data-tab="ewallet" role="tab" aria-selected="false" aria-controls="tab-ewallet">💳 E-Wallet</button>
+      </div>
+
+      <!-- Tab: Bank -->
+      <div class="tab-content active" id="tab-bank" role="tabpanel" aria-labelledby="tab-btn-bank">
+        <div class="bank-list" id="bank-list">
+          <!-- Diisi dari script.js -->
+        </div>
+        <p class="donasi-note">📋 Setelah transfer, konfirmasi ke panitia via WhatsApp agar tercatat sebagai donatur.</p>
+      </div>
+
+      <!-- Tab: QRIS -->
+      <div class="tab-content" id="tab-qris" role="tabpanel" aria-labelledby="tab-btn-qris" hidden>
+        <div class="qris-wrap">
+          <div class="qris-img-wrap">
+            <img id="qris-img" alt="QRIS Donasi Majelis Nuruzh Zholam" class="qris-img" />
+          </div>
+          <div class="qris-info">
+            <h3>Scan QRIS</h3>
+            <p>Scan kode QR di atas menggunakan aplikasi pembayaran apa pun (GoPay, OVO, Dana, DANA, LinkAja, m-Banking, dll)</p>
+            <ul class="qris-steps">
+              <li>Buka aplikasi dompet digital / m-Banking Anda</li>
+              <li>Pilih menu <strong>Scan / Pay</strong></li>
+              <li>Scan QR code di samping</li>
+              <li>Masukkan nominal donasi</li>
+              <li>Konfirmasi pembayaran</li>
+            </ul>
+          </div>
+        </div>
+        <p class="donasi-note">📋 Setelah transfer, konfirmasi ke panitia via WhatsApp agar tercatat sebagai donatur.</p>
+      </div>
+
+      <!-- Tab: E-Wallet -->
+      <div class="tab-content" id="tab-ewallet" role="tabpanel" aria-labelledby="tab-btn-ewallet" hidden>
+        <div class="ewallet-list" id="ewallet-list">
+          <!-- Diisi dari script.js -->
+        </div>
+        <p class="donasi-note">📋 Setelah transfer, konfirmasi ke panitia via WhatsApp agar tercatat sebagai donatur.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== GALERI ===== -->
+  <section class="section bg-light" id="galeri">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Galeri Foto</h2>
+        <p class="section-subtitle">Kondisi majelis saat ini dan rencana pembangunan ke depan</p>
+      </div>
+      <div class="gallery-grid" id="gallery-grid">
+        <!-- Diisi dari script.js -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Lihat foto">
+    <button class="lightbox-close" id="lightbox-close" aria-label="Tutup">✕</button>
+    <button class="lightbox-prev" id="lightbox-prev" aria-label="Sebelumnya">‹</button>
+    <div class="lightbox-img-wrap">
+      <img class="lightbox-img" id="lightbox-img" src="" alt="" />
+      <p class="lightbox-caption" id="lightbox-caption"></p>
+    </div>
+    <button class="lightbox-next" id="lightbox-next" aria-label="Selanjutnya">›</button>
+  </div>
+
+  <!-- ===== DONATUR ===== -->
+  <section class="section" id="donatur">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Daftar Donatur</h2>
+        <p class="section-subtitle">Terima kasih atas kebaikan hati para donatur. Semoga Allah membalas dengan berlipat ganda.</p>
+      </div>
+      <div class="donatur-grid" id="donatur-grid">
+        <!-- Diisi dari script.js -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TENTANG ===== -->
+  <section class="section bg-blue" id="tentang">
+    <div class="container">
+      <div class="tentang-wrap">
+        <div class="tentang-text">
+          <h2 class="section-title white">Tentang Pembangunan</h2>
+          <p>Majelis Nuruzh Zholam adalah tempat berkumpulnya para jamaah untuk menimba ilmu agama, mengadakan pengajian rutin, dan membina akhlak umat. Seiring bertambahnya jamaah, bangunan yang ada saat ini sudah tidak lagi memadai.</p>
+          <p>Kami bermaksud membangun majelis yang lebih luas dan representatif agar kegiatan dakwah dan pendidikan agama dapat berjalan dengan lebih baik dan nyaman bagi seluruh jamaah.</p>
+          <div class="tentang-info">
+            <div class="info-item">
+              <span class="info-icon">📍</span>
+              <div>
+                <strong>Lokasi</strong>
+                <span id="majelis-alamat">Alamat majelis belum diisi</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <span class="info-icon">🗓️</span>
+              <div>
+                <strong>Program</strong>
+                <span id="majelis-program">Pengajian rutin setiap Minggu & Kamis malam</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tentang-img-wrap" id="majelis-photo-wrap">
+          <div class="tentang-img-placeholder">
+            <span>🕌</span>
+            <p>Foto Majelis</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== KONTAK ===== -->
+  <section class="section" id="kontak">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Hubungi Kami</h2>
+        <p class="section-subtitle">Ada pertanyaan seputar donasi? Hubungi panitia langsung.</p>
+      </div>
+      <div class="kontak-grid" id="kontak-grid">
+        <!-- Diisi dari script.js -->
+      </div>
+      <div class="konfirmasi-box">
+        <h3>📋 Cara Konfirmasi Donasi</h3>
+        <ol>
+          <li>Transfer sesuai nominal yang diinginkan ke salah satu rekening di atas</li>
+          <li>Screenshot bukti transfer</li>
+          <li>Kirim ke WhatsApp panitia beserta nama dan nomor yang digunakan</li>
+          <li>Nama Anda akan segera ditambahkan ke daftar donatur</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="nav-logo">☪</span>
+        <span>Majelis Nuruzh Zholam</span>
+      </div>
+      <p class="footer-text">Semoga Allah menerima amal ibadah kita semua. Aamiin.</p>
+      <p class="footer-copy">© 2026 Panitia Pembangunan Majelis Nuruzh Zholam</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="script.js"></script>
+  <script src="analytics.js" defer></script>
+</body>
+</html>
