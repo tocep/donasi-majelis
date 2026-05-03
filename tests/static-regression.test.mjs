@@ -61,3 +61,70 @@ test('admin dashboard validates access through admin_users table', () => {
   assert.match(schema, /create table if not exists public\.admin_users/);
   assert.match(schema, /where user_id = \(select auth\.uid\(\)\)/);
 });
+
+test('public donation confirmation submits pending confirmations with proof upload', () => {
+  const index = read('index.html');
+  const script = read('script.js');
+  const schema = read('docs/planning/supabase-schema.sql');
+
+  assert.match(index, /id="confirmation-form"/);
+  assert.match(index, /id="confirmation-proof"/);
+  assert.match(script, /function initConfirmationForm\(\)/);
+  assert.match(script, /\.from\('pending_confirmations'\)\.insert/);
+  assert.match(script, /uploadPublicProof\(file\)/);
+  assert.match(schema, /Public can upload confirmation proofs/);
+});
+
+test('fund breakdown is loaded, rendered publicly, and managed in admin', () => {
+  const index = read('index.html');
+  const admin = read('admin.html');
+  const script = read('script.js');
+  const adminJs = read('admin.js');
+
+  assert.match(index, /id="fund-breakdown"/);
+  assert.match(admin, /data-admin-tab="breakdown"/);
+  assert.match(admin, /id="breakdown-body"/);
+  assert.match(script, /\.from\('fund_breakdown'\)/);
+  assert.match(script, /function renderFundBreakdown\(\)/);
+  assert.match(adminJs, /function renderBreakdown\(\)/);
+  assert.match(adminJs, /breakdown:\s*'fund_breakdown'/);
+});
+
+test('payment methods support verified_at badges', () => {
+  const script = read('script.js');
+  const adminJs = read('admin.js');
+
+  assert.match(script, /terverifikasiPada:\s*item\.verified_at/);
+  assert.match(script, /Diverifikasi panitia per/);
+  assert.match(adminJs, /verified_at/);
+  assert.match(adminJs, /Tanggal Verifikasi/);
+});
+
+test('admin includes pending confirmations, audit logs, and bulk donor import', () => {
+  const admin = read('admin.html');
+  const adminJs = read('admin.js');
+
+  assert.match(admin, /data-admin-tab="confirmations"/);
+  assert.match(admin, /id="confirmations-body"/);
+  assert.match(admin, /id="import-donors-csv"/);
+  assert.match(adminJs, /function renderConfirmations\(\)/);
+  assert.match(adminJs, /function verifyConfirmation/);
+  assert.match(adminJs, /function rejectConfirmation/);
+  assert.match(adminJs, /function logAdminAction/);
+  assert.match(adminJs, /\.from\('admin_logs'\)\.insert/);
+  assert.match(adminJs, /function importDonorsCsv/);
+});
+
+test('PWA shell and public report page are present', () => {
+  const index = read('index.html');
+  const manifest = read('manifest.json');
+  const sw = read('sw.js');
+  const laporan = read('laporan.html');
+
+  assert.match(index, /rel="manifest" href="manifest\.json"/);
+  assert.match(index, /serviceWorker\.register\('sw\.js'\)/);
+  assert.match(manifest, /Majelis Nuruzh Zholam/);
+  assert.match(sw, /CACHE_NAME/);
+  assert.match(laporan, /id="laporan-table-body"/);
+  assert.match(laporan, /laporan\.js/);
+});

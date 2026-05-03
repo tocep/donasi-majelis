@@ -13,6 +13,8 @@ const state = {
   donorPage: 1,
   donorsTotal: 0,
   donorsTotalAmount: 0,
+  confirmations: [],
+  breakdown: [],
   payments: [],
   contacts: [],
   updates: [],
@@ -65,7 +67,9 @@ function bindAdminEvents() {
   document.getElementById('report-form').addEventListener('submit', handleReportSave);
   document.getElementById('profile-form').addEventListener('submit', handleProfileSave);
   document.getElementById('export-donors-csv').addEventListener('click', exportDonorsCsv);
+  document.getElementById('import-donors-csv').addEventListener('change', importDonorsCsv);
   document.getElementById('donor-search').addEventListener('input', handleDonorSearch);
+  document.getElementById('refresh-confirmations').addEventListener('click', retryConfirmationsLoad);
   document.getElementById('modal-close').addEventListener('click', closeModal);
   document.getElementById('modal-cancel').addEventListener('click', closeModal);
   modalForm.addEventListener('submit', handleModalSave);
@@ -195,6 +199,14 @@ async function loadAdminData() {
     'payment_methods',
     adminDb.from('payment_methods').select('*').order('sort_order', { ascending: true })
   );
+  const confirmationsRes = await runAdminQuery(
+    'pending_confirmations',
+    adminDb.from('pending_confirmations').select('*').order('created_at', { ascending: false })
+  );
+  const breakdownRes = await runAdminQuery(
+    'fund_breakdown',
+    adminDb.from('fund_breakdown').select('*').order('sort_order', { ascending: true })
+  );
   const contactsRes = await runAdminQuery(
     'contacts',
     adminDb.from('contacts').select('*').order('sort_order', { ascending: true })
@@ -204,6 +216,8 @@ async function loadAdminData() {
   state.donors = donorsRes.data || [];
   state.donorsTotal = donorsRes.count || 0;
   state.donorsTotalAmount = (donorsTotalRes.data || []).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  state.confirmations = confirmationsRes.data || [];
+  state.breakdown = breakdownRes.data || [];
   state.payments = paymentsRes.data || [];
   state.contacts = contactsRes.data || [];
   state.updates = [];
@@ -283,6 +297,8 @@ function renderAdmin() {
   renderReportForm();
   renderProfileForm();
   renderDonors();
+  renderConfirmations();
+  renderBreakdown();
   renderPayments();
   renderContacts();
   renderUpdates();
@@ -355,10 +371,52 @@ function renderPayments() {
       <td>${escHtml(item.name)}</td>
       <td>${escHtml(item.account_number || '-')}</td>
       <td>${escHtml(item.account_name || '-')}</td>
+      <td>${escHtml(item.verified_at ? formatDate(item.verified_at) : '-')}</td>
       <td>${rowActions('payment', item.id)}</td>
     </tr>
-  `).join('') || emptyRow(5, 'Belum ada metode donasi.');
+  `).join('') || emptyRow(6, 'Belum ada metode donasi.');
   bindRowActions();
+}
+
+function renderBreakdown() {
+  document.getElementById('breakdown-body').innerHTML = state.breakdown.map(item => `
+    <tr>
+      <td>${escHtml(item.label)}</td>
+      <td>${escHtml(formatRupiah(item.amount))}</td>
+      <td>${Number(item.sort_order || 0)}</td>
+      <td>${rowActions('breakdown', item.id)}</td>
+    </tr>
+  `).join('') || emptyRow(4, 'Belum ada rincian kebutuhan dana.');
+  bindRowActions();
+}
+
+function renderConfirmations() {
+  document.getElementById('confirmations-body').innerHTML = state.confirmations.map(item => `
+    <tr>
+      <td>${escHtml(item.name)}</td>
+      <td>${escHtml(formatRupiah(item.amount))}</td>
+      <td>${escHtml(formatDate(item.donation_date))}</td>
+      <td>${escHtml(item.whatsapp || '-')}</td>
+      <td>${escHtml(item.status || 'pending')}</td>
+      <td>
+        <div class="admin-row-actions">
+          ${item.proof_url ? `<a class="admin-link-btn" href="${escAttr(item.proof_url)}" target="_blank" rel="noopener">Bukti</a>` : ''}
+          ${item.status === 'pending' ? `<button type="button" class="admin-link-btn" data-verify-confirmation="${item.id}">Verifikasi</button>` : ''}
+          ${item.status === 'pending' ? `<button type="button" class="admin-link-btn danger" data-reject-confirmation="${item.id}">Tolak</button>` : ''}
+        </div>
+      </td>
+    </tr>
+  `).join('') || emptyRow(6, 'Belum ada konfirmasi donasi.');
+  bindConfirmationActions();
+}
+
+function bindConfirmationActions() {
+  document.querySelectorAll('[data-verify-confirmation]').forEach(btn => {
+    btn.onclick = () => verifyConfirmation(btn.dataset.verifyConfirmation);
+  });
+  document.querySelectorAll('[data-reject-confirmation]').forEach(btn => {
+    btn.onclick = () => rejectConfirmation(btn.dataset.rejectConfirmation);
+  });
 }
 
 function renderContacts() {
@@ -534,8 +592,16 @@ function modalFieldsHtml(type, item) {
       ${field('Nama Metode', 'name', 'text', item?.name || '', true)}
       ${field('Nomor/Akun', 'account_number', 'text', item?.account_number || '')}
       ${field('Atas Nama', 'account_name', 'text', item?.account_name || '')}
+      ${field('Tanggal Verifikasi', 'verified_at', 'date', item?.verified_at || '')}
       ${field('Urutan', 'sort_order', 'number', item?.sort_order || 0, true)}
       <label class="admin-check"><input type="checkbox" name="is_active" ${item?.is_active !== false ? 'checked' : ''} /> Aktif</label>
+    `;
+  }
+  if (type === 'breakdown') {
+    return `
+      ${field('Label RAB', 'label', 'text', item?.label || '', true)}
+      ${field('Nominal', 'amount', 'number', item?.amount || '', true, '1000')}
+      ${field('Urutan', 'sort_order', 'number', item?.sort_order || 0, true)}
     `;
   }
   if (type === 'contact') {
@@ -593,6 +659,7 @@ async function handleModalSave(event) {
       : await adminDb.from(table).insert(payload);
 
     if (result.error) throw result.error;
+    await logAdminAction(state.editingId ? 'update' : 'insert', table, state.editingId, payload);
     closeModal();
     await loadAdminData();
     renderAdmin();
@@ -620,8 +687,16 @@ function buildPayload(type, form) {
       name: clean(form.get('name')),
       account_number: clean(form.get('account_number')),
       account_name: clean(form.get('account_name')),
+      verified_at: clean(form.get('verified_at')) || null,
       sort_order: Number(form.get('sort_order') || 0),
       is_active: form.get('is_active') === 'on',
+    };
+  }
+  if (type === 'breakdown') {
+    return {
+      label: clean(form.get('label')),
+      amount: Number(form.get('amount')),
+      sort_order: Number(form.get('sort_order') || 0),
     };
   }
   if (type === 'contact') {
@@ -659,6 +734,9 @@ function validatePayload(type, payload) {
   }
   if (type === 'payment' && payload.account_number && !payload.account_name) {
     return 'Atas nama wajib diisi jika nomor akun diisi.';
+  }
+  if (type === 'breakdown' && (!payload.label || payload.amount < 0)) {
+    return 'Label dan nominal RAB wajib valid.';
   }
   if (type === 'contact' && (!payload.role_name || !payload.person_name || !isValidWhatsapp(payload.whatsapp))) {
     return 'Kontak wajib memakai nama, jabatan, dan WhatsApp format 628...';
@@ -729,6 +807,7 @@ async function handleProfileSave(event) {
 async function saveSettings(payload) {
   const { error } = await adminDb.from('site_settings').update(payload).eq('id', 1);
   if (error) throw error;
+  await logAdminAction('update', 'site_settings', '1', payload);
   await loadAdminData();
   renderAdmin();
 }
@@ -741,6 +820,7 @@ async function deleteItem(type, id) {
     showToast(error.message || 'Gagal menghapus data.', true);
     return;
   }
+  await logAdminAction('delete', tableName(type), id, null);
   await loadAdminData();
   renderAdmin();
   showToast('Data berhasil dihapus.');
@@ -809,6 +889,125 @@ function exportDonorsCsv() {
   a.click();
 }
 
+async function retryConfirmationsLoad() {
+  try {
+    const confirmationsRes = await runAdminQuery(
+      'pending_confirmations',
+      adminDb.from('pending_confirmations').select('*').order('created_at', { ascending: false })
+    );
+    state.confirmations = confirmationsRes.data || [];
+    renderConfirmations();
+    showToast('Konfirmasi donasi berhasil dimuat.');
+  } catch (error) {
+    showToast(error.message || 'Gagal memuat konfirmasi donasi.', true);
+  }
+}
+
+async function verifyConfirmation(id) {
+  const item = state.confirmations.find(row => String(row.id) === String(id));
+  if (!item) return;
+  const donorPayload = {
+    name: item.name,
+    amount: Number(item.amount || 0),
+    donation_date: item.donation_date,
+    notes: `Konfirmasi WhatsApp ${item.whatsapp || '-'}${item.notes ? ` - ${item.notes}` : ''}`,
+  };
+  const donorRes = await adminDb.from('donors').insert(donorPayload);
+  if (donorRes.error) {
+    showToast(donorRes.error.message || 'Gagal membuat data donatur.', true);
+    return;
+  }
+  const confirmationRes = await adminDb
+    .from('pending_confirmations')
+    .update({ status: 'verified' })
+    .eq('id', id);
+  if (confirmationRes.error) {
+    showToast(confirmationRes.error.message || 'Gagal memperbarui konfirmasi.', true);
+    return;
+  }
+  await logAdminAction('verify', 'pending_confirmations', id, donorPayload);
+  await loadAdminData();
+  renderAdmin();
+  showToast('Konfirmasi diverifikasi dan masuk daftar donatur.');
+}
+
+async function rejectConfirmation(id) {
+  const notes = prompt('Catatan penolakan (opsional):') || '';
+  const { error } = await adminDb
+    .from('pending_confirmations')
+    .update({ status: 'rejected', notes: notes.trim() })
+    .eq('id', id);
+  if (error) {
+    showToast(error.message || 'Gagal menolak konfirmasi.', true);
+    return;
+  }
+  await logAdminAction('reject', 'pending_confirmations', id, { notes: notes.trim() });
+  await retryConfirmationsLoad();
+  showToast('Konfirmasi ditolak.');
+}
+
+function parseCsvLine(line) {
+  const cells = [];
+  let current = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const next = line[i + 1];
+    if (char === '"' && quoted && next === '"') {
+      current += '"';
+      i++;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === ',' && !quoted) {
+      cells.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  cells.push(current.trim());
+  return cells;
+}
+
+async function importDonorsCsv(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    const rows = lines.slice(1).map(parseCsvLine).map(([name, amount, donationDate, isAnonymous = '', notes = '']) => ({
+      name: clean(name) || 'Hamba Allah',
+      amount: Number(String(amount).replace(/[^0-9.-]/g, '')),
+      donation_date: clean(donationDate) || today(),
+      is_anonymous: /^ya|true|1$/i.test(clean(isAnonymous)),
+      notes: clean(notes),
+    })).filter(row => row.amount > 0 && row.donation_date);
+    if (rows.length === 0) throw new Error('CSV tidak berisi data donatur valid.');
+    const { error } = await adminDb.from('donors').insert(rows);
+    if (error) throw error;
+    await logAdminAction('bulk_import', 'donors', null, { count: rows.length });
+    await loadAdminData();
+    renderAdmin();
+    showToast(`${rows.length} donatur berhasil diimport.`);
+  } catch (error) {
+    showToast(error.message || 'Import CSV gagal.', true);
+  } finally {
+    event.target.value = '';
+  }
+}
+
+async function logAdminAction(action, tableNameValue, recordId = null, payload = null) {
+  if (!adminDb || !state.adminUser) return;
+  const { error } = await adminDb.from('admin_logs').insert({
+    action,
+    table_name: tableNameValue,
+    record_id: recordId ? String(recordId) : null,
+    admin_email: state.adminUser.email || '',
+    payload,
+  });
+  if (error) console.warn('Gagal mencatat audit log:', error.message);
+}
+
 function activateTab(name) {
   document.querySelectorAll('.admin-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === name));
   document.querySelectorAll('.admin-panel').forEach(panel => panel.classList.toggle('active', panel.id === `panel-${name}`));
@@ -821,6 +1020,7 @@ function findRecord(type, id) {
 function collection(type) {
   return {
     donor: state.donors,
+    breakdown: state.breakdown,
     payment: state.payments,
     contact: state.contacts,
     update: state.updates,
@@ -831,6 +1031,7 @@ function collection(type) {
 function tableName(type) {
   return {
     donor: 'donors',
+    breakdown: 'fund_breakdown',
     payment: 'payment_methods',
     contact: 'contacts',
     update: 'building_updates',
@@ -841,6 +1042,7 @@ function tableName(type) {
 function modalLabel(type) {
   return {
     donor: 'Donatur',
+    breakdown: 'Rincian Dana',
     payment: 'Metode Donasi',
     contact: 'Kontak',
     update: 'Update Pembangunan',

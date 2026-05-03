@@ -26,6 +26,7 @@ create table if not exists public.payment_methods (
   account_name text not null default '',
   sort_order integer not null default 0,
   is_active boolean not null default true,
+  verified_at date,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -123,6 +124,7 @@ create table if not exists public.gallery_items (
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
+set search_path = public, pg_temp
 as $$
 begin
   new.updated_at = now();
@@ -481,6 +483,15 @@ create policy "Public can read donasi assets"
 on storage.objects for select
 to anon, authenticated
 using (bucket_id = 'donasi-assets');
+
+drop policy if exists "Public can upload confirmation proofs" on storage.objects;
+create policy "Public can upload confirmation proofs"
+on storage.objects for insert
+to anon, authenticated
+with check (
+  bucket_id = 'donasi-assets'
+  and (storage.foldername(name))[1] = 'confirmations'
+);
 
 drop policy if exists "Authenticated admins can upload donasi assets" on storage.objects;
 create policy "Authenticated admins can upload donasi assets"

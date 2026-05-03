@@ -87,6 +87,12 @@ button { cursor: pointer; font-family: inherit; }
 }
 .btn-whatsapp:hover { background: #1ebe5a; box-shadow: 0 4px 16px rgba(37,211,102,.35); }
 
+.btn-submit {
+  background: var(--blue-dark);
+  color: var(--white);
+  border-radius: var(--radius-sm);
+}
+
 /* ---------- Sections ---------- */
 .section { padding: 3.5rem 0; }
 .bg-light { background: var(--gray-50); }
@@ -392,6 +398,54 @@ button { cursor: pointer; font-family: inherit; }
 .fund-success { background: #ecfdf5; border-color: rgba(22,163,74,.18); }
 .fund-warning { background: #fff7ed; border-color: rgba(247,127,0,.2); }
 
+.fund-breakdown {
+  margin-top: 1rem;
+  border-top: 1px solid var(--gray-100);
+  padding-top: 1rem;
+}
+
+.fund-breakdown-head,
+.fund-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  align-items: center;
+}
+
+.fund-breakdown-head {
+  margin-bottom: .75rem;
+}
+
+.fund-breakdown-head h4 {
+  color: var(--blue-dark);
+  font-size: 1rem;
+}
+
+.fund-breakdown-head span,
+.bank-verified {
+  color: var(--green);
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+.fund-breakdown-list {
+  display: grid;
+  gap: .5rem;
+}
+
+.fund-breakdown-row {
+  padding: .65rem .75rem;
+  background: var(--gray-50);
+  border-radius: var(--radius-sm);
+  color: var(--gray-600);
+  font-size: .9rem;
+}
+
+.fund-breakdown-row strong {
+  color: var(--blue-dark);
+  white-space: nowrap;
+}
+
 .transparency-note {
   margin-top: 1rem;
   color: var(--gray-600);
@@ -511,6 +565,7 @@ button { cursor: pointer; font-family: inherit; }
 .bank-name      { font-weight: 700; font-size: .875rem; }
 .bank-number    { font-size: 1rem; font-weight: 700; color: var(--blue-dark); letter-spacing: .05em; }
 .bank-atas-nama { font-size: .75rem; color: var(--gray-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bank-verified { display: block; margin-top: .15rem; }
 
 .btn-copy {
   flex-shrink: 0;
@@ -579,6 +634,53 @@ button { cursor: pointer; font-family: inherit; }
   font-size: .85rem;
   line-height: 1.8;
   font-size: 1.5rem;
+}
+
+/* ===================================================
+   CONFIRMATION FORM
+   =================================================== */
+.confirmation-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .85rem;
+  max-width: 780px;
+  margin: 0 auto;
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.confirmation-form label {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  color: var(--gray-800);
+  font-weight: 700;
+  font-size: .88rem;
+}
+
+.confirmation-form input,
+.confirmation-form textarea {
+  width: 100%;
+  border: 1.5px solid var(--gray-100);
+  border-radius: var(--radius-sm);
+  padding: .75rem;
+  color: var(--gray-800);
+  font: inherit;
+  background: var(--white);
+}
+
+.confirmation-status {
+  min-height: 1.4rem;
+  color: var(--gray-600);
+  font-size: .9rem;
+}
+
+@media (min-width: 700px) {
+  .confirmation-form { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 1.25rem; }
+  .confirmation-span-2 { grid-column: span 2; }
 }
 
 .qris-info h3 { color: var(--blue-dark); margin-bottom: .5rem; }
@@ -1305,6 +1407,18 @@ body { padding-top: 60px; }
   color: var(--blue-dark);
 }
 
+.admin-file-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-file-btn input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .admin-btn-danger {
   background: #fee2e2;
   color: #991b1b;
@@ -1474,6 +1588,56 @@ body { padding-top: 60px; }
 
 .admin-toast.error {
   background: #991b1b;
+}
+
+/* ===================================================
+   REPORT PAGE
+   =================================================== */
+.report-body {
+  padding-top: 0;
+  background: var(--gray-50);
+}
+
+.report-page {
+  width: min(100%, 1000px);
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.report-header,
+.report-section {
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.report-header h1,
+.report-section h2 {
+  color: var(--blue-dark);
+}
+
+.monthly-chart {
+  width: 100%;
+  height: auto;
+  background: var(--gray-50);
+  border-radius: var(--radius-sm);
+}
+
+@media print {
+  .report-body { background: var(--white); }
+  .report-header,
+  .report-section { box-shadow: none; break-inside: avoid; }
+  .report-header .admin-btn { display: none; }
 }
 
 @media (min-width: 700px) {

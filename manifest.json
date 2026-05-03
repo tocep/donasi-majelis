@@ -1,0 +1,17 @@
+{
+  "name": "Donasi Majelis Nuruzh Zholam",
+  "short_name": "Donasi Majelis",
+  "description": "Website donasi pembangunan Majelis Nuruzh Zholam.",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f0f4f8",
+  "theme_color": "#1a3a5c",
+  "icons": [
+    {
+      "src": "images/og-cover.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

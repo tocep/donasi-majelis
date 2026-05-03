@@ -43,6 +43,7 @@ create table if not exists public.admin_logs (
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
+set search_path = public, pg_temp
 as $$
 begin
   new.updated_at = now();
@@ -71,6 +72,9 @@ alter table public.admin_users enable row level security;
 alter table public.pending_confirmations enable row level security;
 alter table public.fund_breakdown enable row level security;
 alter table public.admin_logs enable row level security;
+
+alter table public.payment_methods
+  add column if not exists verified_at date;
 
 drop policy if exists "Admins can read own admin user" on public.admin_users;
 create policy "Admins can read own admin user"
@@ -177,6 +181,15 @@ to authenticated
 with check (
   bucket_id = 'donasi-assets'
   and exists (select 1 from public.admin_users where user_id = (select auth.uid()) and is_active = true)
+);
+
+drop policy if exists "Public can upload confirmation proofs" on storage.objects;
+create policy "Public can upload confirmation proofs"
+on storage.objects for insert
+to anon, authenticated
+with check (
+  bucket_id = 'donasi-assets'
+  and (storage.foldername(name))[1] = 'confirmations'
 );
 
 drop policy if exists "Authenticated admins can update donasi assets" on storage.objects;

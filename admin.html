@@ -48,7 +48,9 @@
       <nav class="admin-tabs" aria-label="Menu admin">
         <button type="button" class="admin-tab active" data-admin-tab="summary">Ringkasan</button>
         <button type="button" class="admin-tab" data-admin-tab="donors">Donatur</button>
+        <button type="button" class="admin-tab" data-admin-tab="confirmations">Konfirmasi</button>
         <button type="button" class="admin-tab" data-admin-tab="report">Laporan Dana</button>
+        <button type="button" class="admin-tab" data-admin-tab="breakdown">RAB</button>
         <button type="button" class="admin-tab" data-admin-tab="payments">Metode Donasi</button>
         <button type="button" class="admin-tab" data-admin-tab="contacts">Kontak</button>
         <button type="button" class="admin-tab" data-admin-tab="updates">Update Pembangunan</button>
@@ -66,6 +68,10 @@
             <h2>Donatur</h2>
             <div class="admin-card-actions">
               <button type="button" class="admin-btn admin-btn-light" id="export-donors-csv">Export CSV</button>
+              <label class="admin-btn admin-btn-light admin-file-btn">
+                Import CSV
+                <input type="file" id="import-donors-csv" accept=".csv,text/csv" />
+              </label>
               <button type="button" class="admin-btn admin-btn-primary" data-open-form="donor">Tambah Donatur</button>
             </div>
           </div>
@@ -82,6 +88,21 @@
             </table>
           </div>
           <div class="admin-pagination" id="donor-pagination"></div>
+        </div>
+      </section>
+
+      <section class="admin-panel" id="panel-confirmations">
+        <div class="admin-card">
+          <div class="admin-card-head">
+            <h2>Konfirmasi Donasi</h2>
+            <button type="button" class="admin-btn admin-btn-light" id="refresh-confirmations">Muat Ulang</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Nama</th><th>Nominal</th><th>Tanggal</th><th>WhatsApp</th><th>Status</th><th>Aksi</th></tr></thead>
+              <tbody id="confirmations-body"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -118,6 +139,21 @@
         </div>
       </section>
 
+      <section class="admin-panel" id="panel-breakdown">
+        <div class="admin-card">
+          <div class="admin-card-head">
+            <h2>Rincian Kebutuhan Dana</h2>
+            <button type="button" class="admin-btn admin-btn-primary" data-open-form="breakdown">Tambah RAB</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Label</th><th>Nominal</th><th>Urutan</th><th>Aksi</th></tr></thead>
+              <tbody id="breakdown-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <section class="admin-panel" id="panel-payments">
         <div class="admin-card">
           <div class="admin-card-head">
@@ -126,7 +162,7 @@
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
-              <thead><tr><th>Tipe</th><th>Nama</th><th>Nomor</th><th>a.n.</th><th>Aksi</th></tr></thead>
+              <thead><tr><th>Tipe</th><th>Nama</th><th>Nomor</th><th>a.n.</th><th>Verifikasi</th><th>Aksi</th></tr></thead>
               <tbody id="payments-body"></tbody>
             </table>
           </div>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Laporan Donasi Majelis Nuruzh Zholam</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="report-body">
+  <main class="report-page">
+    <header class="report-header">
+      <div>
+        <p class="admin-kicker">Laporan Publik</p>
+        <h1>Laporan Donasi Majelis Nuruzh Zholam</h1>
+        <p id="laporan-summary">Memuat laporan...</p>
+      </div>
+      <button type="button" class="admin-btn admin-btn-light" onclick="window.print()">Cetak</button>
+    </header>
+
+    <section class="report-section">
+      <h2>Ringkasan Dana</h2>
+      <div class="fund-grid" id="laporan-fund-grid"></div>
+    </section>
+
+    <section class="report-section">
+      <h2>Rincian Kebutuhan Dana</h2>
+      <div class="fund-breakdown" id="laporan-breakdown"></div>
+    </section>
+
+    <section class="report-section">
+      <h2>Rekap Donasi Bulanan</h2>
+      <canvas class="monthly-chart" id="monthly-chart" width="900" height="320"></canvas>
+    </section>
+
+    <section class="report-section">
+      <h2>Riwayat Donatur</h2>
+      <div class="admin-table-wrap">
+        <table class="admin-table report-table">
+          <thead><tr><th>Nama</th><th>Nominal</th><th>Tanggal</th></tr></thead>
+          <tbody id="laporan-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="utils.js"></script>
+  <script src="laporan.js"></script>
+</body>
+</html>

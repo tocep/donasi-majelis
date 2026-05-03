@@ -18,6 +18,7 @@ let DATA = {
     rekening: [],
     ewallet: [],
   },
+  rincianDana: [],
   kontak: [],
   updatePembangunan: [],
   galeri: [],
@@ -68,6 +69,7 @@ async function loadPublicData() {
       donorsRes,
       updatesRes,
       galleryRes,
+      breakdownRes,
     ] = await Promise.all([
       db.from('site_settings').select('*').eq('id', 1).single(),
       db.from('payment_methods').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
@@ -75,9 +77,10 @@ async function loadPublicData() {
       db.from('donors').select('*').order('donation_date', { ascending: false }),
       db.from('building_updates').select('*').order('update_date', { ascending: false }),
       db.from('gallery_items').select('*').order('sort_order', { ascending: true }),
+      db.from('fund_breakdown').select('*').order('sort_order', { ascending: true }),
     ]);
 
-    const responses = [settingsRes, paymentsRes, contactsRes, donorsRes, updatesRes, galleryRes];
+    const responses = [settingsRes, paymentsRes, contactsRes, donorsRes, updatesRes, galleryRes, breakdownRes];
     const failed = responses.find(res => res.error);
     if (failed) throw failed.error;
 
@@ -100,6 +103,12 @@ async function loadPublicData() {
         rekening: payments.filter(item => item.method_type === 'bank').map(mapPaymentMethod),
         ewallet: payments.filter(item => item.method_type === 'ewallet').map(mapPaymentMethod),
       },
+      rincianDana: (breakdownRes.data || []).map(item => ({
+        id: item.id,
+        label: item.label || '',
+        amount: Number(item.amount || 0),
+        sortOrder: Number(item.sort_order || 0),
+      })),
       kontak: (contactsRes.data || []).map(item => ({
         id: item.id,
         jabatan: item.role_name || '',
@@ -142,6 +151,7 @@ function mapPaymentMethod(item) {
     nama: item.name || '',
     nomor: item.account_number || '',
     atasNama: item.account_name || '',
+    terverifikasiPada: item.verified_at || '',
   };
 }
 
@@ -272,7 +282,34 @@ function initTransparansi() {
   document.getElementById('laporan-catatan').textContent =
     DATA.donasi.catatanLaporan || 'Laporan dana akan diperbarui oleh panitia.';
 
+  renderFundBreakdown();
   renderUpdatePembangunan();
+}
+
+function renderFundBreakdown() {
+  const wrap = document.getElementById('fund-breakdown');
+  if (!wrap) return;
+
+  if (DATA.rincianDana.length === 0) {
+    wrap.innerHTML = '<p class="transparency-note">Rincian kebutuhan dana akan ditambahkan panitia.</p>';
+    return;
+  }
+
+  const total = DATA.rincianDana.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  wrap.innerHTML = `
+    <div class="fund-breakdown-head">
+      <h4>Rincian Kebutuhan Dana</h4>
+      <span>Total RAB ${formatRupiah(total)}</span>
+    </div>
+    <div class="fund-breakdown-list">
+      ${DATA.rincianDana.map(item => `
+        <div class="fund-breakdown-row">
+          <span>${escHtml(item.label)}</span>
+          <strong>${formatRupiah(item.amount)}</strong>
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
 function renderUpdatePembangunan() {
@@ -316,6 +353,7 @@ function renderRekening() {
         <span class="bank-name">${escHtml(item.nama)}</span>
         <span class="bank-number ${item.nomor ? '' : 'text-muted'}" id="${valueId}">${escHtml(item.nomor || 'Nomor rekening belum diisi')}</span>
         <span class="bank-atas-nama">a.n. ${escHtml(item.atasNama || 'Belum diisi')}</span>
+        ${item.terverifikasiPada ? `<span class="bank-verified">Diverifikasi panitia per ${formatTanggal(item.terverifikasiPada)}</span>` : ''}
       </div>
     `;
     row.appendChild(createCopyButton(valueId, item.nomor));
@@ -342,6 +380,7 @@ function renderEwallet() {
         <span class="ewallet-name">${escHtml(item.nama)}</span>
         <span class="ewallet-number ${item.nomor ? '' : 'text-muted'}" id="${valueId}">${escHtml(item.nomor || 'Nomor e-wallet belum diisi')}</span>
         <span class="ewallet-atas-nama">a.n. ${escHtml(item.atasNama || 'Belum diisi')}</span>
+        ${item.terverifikasiPada ? `<span class="bank-verified">Diverifikasi panitia per ${formatTanggal(item.terverifikasiPada)}</span>` : ''}
       </div>
     `;
     row.appendChild(createCopyButton(valueId, item.nomor));
@@ -589,7 +628,80 @@ function renderPublicPage() {
   initDonatur();
   initKontak();
   initWhatsAppShare();
+  initConfirmationForm();
   initActiveNav();
+}
+
+function initConfirmationForm() {
+  const form = document.getElementById('confirmation-form');
+  if (!form || form.dataset.bound === 'true') return;
+  form.dataset.bound = 'true';
+  const dateInput = document.getElementById('confirmation-date');
+  if (dateInput && !dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+  form.addEventListener('submit', handleConfirmationSubmit);
+}
+
+async function handleConfirmationSubmit(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const status = document.getElementById('confirmation-status');
+  const submitBtn = event.submitter || form.querySelector('button[type="submit"]');
+
+  if (!db) {
+    status.textContent = 'Konfirmasi belum bisa dikirim karena Supabase belum dikonfigurasi.';
+    return;
+  }
+
+  const file = document.getElementById('confirmation-proof').files[0];
+  const payload = {
+    name: document.getElementById('confirmation-name').value.trim(),
+    amount: Number(document.getElementById('confirmation-amount').value),
+    donation_date: document.getElementById('confirmation-date').value,
+    whatsapp: document.getElementById('confirmation-whatsapp').value.trim(),
+    notes: document.getElementById('confirmation-notes').value.trim(),
+    proof_url: '',
+    status: 'pending',
+  };
+
+  if (!payload.name || payload.amount <= 0 || !payload.donation_date || !/^628[0-9]{8,15}$/.test(payload.whatsapp)) {
+    status.textContent = 'Nama, nominal, tanggal, dan WhatsApp format 628... wajib valid.';
+    return;
+  }
+  if (!file) {
+    status.textContent = 'Bukti transfer wajib diunggah.';
+    return;
+  }
+
+  try {
+    submitBtn.disabled = true;
+    status.textContent = 'Mengunggah bukti transfer...';
+    payload.proof_url = await uploadPublicProof(file);
+    status.textContent = 'Mengirim konfirmasi...';
+    const { error } = await db.from('pending_confirmations').insert(payload);
+    if (error) throw error;
+    form.reset();
+    document.getElementById('confirmation-date').value = new Date().toISOString().slice(0, 10);
+    status.textContent = 'Konfirmasi terkirim. Panitia akan memverifikasi donasi Anda.';
+    showToast('Konfirmasi donasi terkirim.');
+  } catch (error) {
+    status.textContent = error.message || 'Konfirmasi gagal dikirim. Coba lagi atau hubungi panitia.';
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+async function uploadPublicProof(file) {
+  if (!file.type.startsWith('image/')) throw new Error('Bukti transfer harus berupa gambar.');
+  if (file.size > 3 * 1024 * 1024) throw new Error('Ukuran bukti transfer maksimal 3 MB.');
+  const safeName = file.name.replace(/[^a-z0-9._-]/gi, '-').toLowerCase();
+  const path = `confirmations/${Date.now()}-${safeName}`;
+  const { error } = await db.storage.from(SUPABASE_CONFIG.storageBucket).upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) throw error;
+  const { data } = db.storage.from(SUPABASE_CONFIG.storageBucket).getPublicUrl(path);
+  return data.publicUrl;
 }
 
 function galleryImageUrl(url) {

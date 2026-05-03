@@ -16,6 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -35,6 +36,7 @@
         <a href="#progress" class="nav-link">Progress</a>
         <a href="#transparansi" class="nav-link">Transparansi</a>
         <a href="#donasi" class="nav-link">Cara Donasi</a>
+        <a href="#konfirmasi" class="nav-link">Konfirmasi</a>
         <a href="#galeri" class="nav-link">Galeri</a>
         <a href="#donatur" class="nav-link">Donatur</a>
         <a href="#kontak" class="nav-link">Kontak</a>
@@ -144,6 +146,9 @@
           <div class="fund-grid" id="fund-grid">
             <!-- Diisi dari script.js -->
           </div>
+          <div class="fund-breakdown" id="fund-breakdown">
+            <!-- Diisi dari script.js -->
+          </div>
           <p class="transparency-note" id="laporan-catatan">Data laporan akan diperbarui oleh panitia.</p>
         </div>
 
@@ -157,6 +162,44 @@
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ===== KONFIRMASI DONASI ===== -->
+  <section class="section bg-light" id="konfirmasi">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Konfirmasi Donasi</h2>
+        <p class="section-subtitle">Sudah transfer? Kirim konfirmasi agar panitia bisa mencatat donasi Anda.</p>
+      </div>
+      <form class="confirmation-form" id="confirmation-form">
+        <label>
+          Nama Donatur
+          <input type="text" id="confirmation-name" autocomplete="name" required />
+        </label>
+        <label>
+          Nominal Donasi
+          <input type="number" id="confirmation-amount" min="1000" step="1000" required />
+        </label>
+        <label>
+          Tanggal Transfer
+          <input type="date" id="confirmation-date" required />
+        </label>
+        <label>
+          Nomor WhatsApp
+          <input type="tel" id="confirmation-whatsapp" inputmode="numeric" placeholder="628..." required />
+        </label>
+        <label class="confirmation-span-2">
+          Bukti Transfer
+          <input type="file" id="confirmation-proof" accept="image/*" required />
+        </label>
+        <label class="confirmation-span-2">
+          Catatan untuk Panitia
+          <textarea id="confirmation-notes" rows="3" placeholder="Opsional"></textarea>
+        </label>
+        <button type="submit" class="btn btn-submit confirmation-span-2">Kirim Konfirmasi</button>
+        <p class="confirmation-status confirmation-span-2" id="confirmation-status"></p>
+      </form>
     </div>
   </section>
 
@@ -324,6 +367,9 @@
   <script src="supabase-config.js"></script>
   <script src="utils.js"></script>
   <script src="script.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  </script>
   <script src="analytics.js" defer></script>
 </body>
 </html>
