@@ -9,6 +9,7 @@ Website statis untuk publikasi donasi pembangunan Majelis Nuruzh Zholam.
 - `style.css` - styling halaman publik dan admin.
 - `script.js` - logika halaman publik.
 - `admin.js` - logika panel admin.
+- `utils.js` - helper bersama untuk format Rupiah, escaping HTML, dan toast.
 - `supabase-config.js` - konfigurasi koneksi Supabase.
 - `analytics.js` - analytics ringan yang nonaktif secara default.
 - `docs/planning/` - dokumentasi perencanaan, operasional, dan publikasi.
@@ -53,6 +54,20 @@ git push -u origin main
 ## Domain
 
 Jika domain tersedia, arahkan domain ke GitHub Pages melalui menu `Settings` -> `Pages` -> `Custom domain`. Setelah domain aktif, update nilai `og:url` di `index.html` agar preview WhatsApp dan media sosial memakai alamat resmi.
+
+## Admin
+
+Admin login memakai Supabase Auth, lalu aksesnya divalidasi lewat tabel `public.admin_users`.
+Jalankan `docs/planning/supabase-schema.sql` di Supabase SQL Editor untuk membuat tabel admin dan RLS.
+Untuk project yang sudah terlanjur berjalan, jalankan `docs/planning/admin-users-rls-migration.sql`.
+
+## Tes
+
+Jalankan regresi statis:
+
+```bash
+node --test tests/static-regression.test.mjs
+```
 
 ## Analytics
 

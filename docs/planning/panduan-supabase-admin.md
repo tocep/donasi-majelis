@@ -9,6 +9,8 @@ Panduan ini dipakai untuk mengaktifkan backend, database, login admin, dan uploa
 3. Jalankan isi file `docs/planning/supabase-schema.sql`.
 4. Pastikan bucket `donasi-assets` sudah muncul di Storage dan bersifat public.
 
+Untuk project yang sudah berjalan dan hanya perlu menaikkan akses admin ke RLS, jalankan `docs/planning/admin-users-rls-migration.sql`.
+
 ## 2. Isi Konfigurasi Frontend
 
 Buka `supabase-config.js`, lalu isi:
@@ -27,10 +29,23 @@ Gunakan hanya `anon public key`. Jangan pernah menaruh `service_role key` di fro
 
 1. Buka Supabase Dashboard.
 2. Masuk ke Authentication > Users.
-3. Tambahkan user dengan email dan password panitia.
-4. Login melalui `admin.html`.
+3. Tambahkan user dengan email dan password panitia. SQL bawaan akan menjadikan `panitia@majelis.org` sebagai admin awal jika user itu ada; jika tidak, user Auth paling lama akan dijadikan admin awal.
+4. Jika email admin awal berbeda, jalankan SQL berikut setelah mengganti emailnya:
 
-Catatan: versi pertama ini memakai semua user authenticated sebagai admin. Jangan buka pendaftaran publik di Supabase Auth.
+```sql
+insert into public.admin_users (user_id, email, role, is_active)
+select id, email, 'admin', true
+from auth.users
+where lower(email) = lower('email-admin@contoh.org')
+on conflict (user_id) do update
+set email = excluded.email,
+    role = 'admin',
+    is_active = true;
+```
+
+5. Login melalui `admin.html`.
+
+Catatan: hanya user Auth yang punya baris aktif di `public.admin_users` yang bisa membuka dashboard dan mengubah data.
 
 ## 4. Cara Update Data
 
@@ -50,5 +65,5 @@ Catatan: versi pertama ini memakai semua user authenticated sebagai admin. Janga
 
 - Aktifkan Row Level Security memakai SQL yang disediakan.
 - Jangan membagikan akun admin ke pihak luar panitia.
-- Jika butuh role bendahara/editor berbeda, tambahkan tabel role admin pada pengembangan berikutnya.
+- Nonaktifkan akses admin dengan mengubah `public.admin_users.is_active` menjadi `false`.
 - Data publik seperti daftar donatur memang dapat dibaca pengunjung karena ditampilkan di website.

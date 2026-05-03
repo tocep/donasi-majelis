@@ -26,12 +26,9 @@ let DATA = {
 
 let WHATSAPP_MESSAGE = 'Assalamualaikum, saya ingin berdonasi untuk pembangunan Majelis Nuruzh Zholam';
 let dataLoadMessage = '';
+let realtimeChannel = null;
 
 const db = createSupabaseClient();
-
-function formatRupiah(angka) {
-  return 'Rp ' + Number(angka || 0).toLocaleString('id-ID');
-}
 
 function formatTanggal(str) {
   if (!str) return 'Belum diperbarui';
@@ -123,6 +120,7 @@ async function loadPublicData() {
       donatur: (donorsRes.data || []).map(item => ({
         id: item.id,
         nama: item.name || 'Hamba Allah',
+        isAnonim: Boolean(item.is_anonymous),
         nominal: Number(item.amount || 0),
         tanggal: item.donation_date,
       })),
@@ -313,7 +311,7 @@ function renderRekening() {
     const row = document.createElement('div');
     row.className = 'bank-item';
     row.innerHTML = `
-      <div class="bank-logo bank-${escAttr(item.kode)}">${escHtml(item.label)}</div>
+      <div class="bank-logo bank-${escSafeClass(item.kode)}">${escHtml(item.label)}</div>
       <div class="bank-info">
         <span class="bank-name">${escHtml(item.nama)}</span>
         <span class="bank-number ${item.nomor ? '' : 'text-muted'}" id="${valueId}">${escHtml(item.nomor || 'Nomor rekening belum diisi')}</span>
@@ -339,7 +337,7 @@ function renderEwallet() {
     const row = document.createElement('div');
     row.className = 'ewallet-item';
     row.innerHTML = `
-      <div class="ewallet-logo ${escAttr(item.kode)}">${escHtml(item.label)}</div>
+      <div class="ewallet-logo ${escSafeClass(item.kode)}">${escHtml(item.label)}</div>
       <div class="ewallet-info">
         <span class="ewallet-name">${escHtml(item.nama)}</span>
         <span class="ewallet-number ${item.nomor ? '' : 'text-muted'}" id="${valueId}">${escHtml(item.nomor || 'Nomor e-wallet belum diisi')}</span>
@@ -390,20 +388,6 @@ function copyText(elId, btn) {
       btn.classList.remove('copied');
     }, 2000);
   });
-}
-
-let toastTimer;
-function showToast(msg) {
-  let toast = document.querySelector('.toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.className = 'toast';
-    document.body.appendChild(toast);
-  }
-  toast.textContent = msg;
-  clearTimeout(toastTimer);
-  toast.classList.add('show');
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
 }
 
 function initTentang() {
@@ -492,7 +476,7 @@ function initGaleri() {
       div.removeAttribute('role');
     };
 
-    img.src = item.src;
+    img.src = galleryImageUrl(item.src);
     div.appendChild(img);
     div.appendChild(cap);
 
@@ -563,13 +547,14 @@ function initDonatur() {
   const sorted = [...DATA.donatur].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
 
   sorted.forEach(d => {
-    const initial = (d.nama || 'H').trim().charAt(0).toUpperCase();
+    const nama = d.isAnonim ? 'Hamba Allah' : (d.nama || 'Hamba Allah');
+    const initial = (nama || 'H').trim().charAt(0).toUpperCase();
     const card = document.createElement('div');
     card.className = 'donatur-card';
     card.innerHTML = `
       <div class="donatur-avatar">${escHtml(initial)}</div>
       <div class="donatur-info">
-        <div class="donatur-name">${escHtml(d.nama)}</div>
+        <div class="donatur-name">${escHtml(nama)}</div>
         <div class="donatur-date">${formatTanggal(d.tanggal)}</div>
       </div>
       <div class="donatur-amount">${formatRupiah(d.nominal)}</div>
@@ -603,22 +588,47 @@ function renderPublicPage() {
   initGaleri();
   initDonatur();
   initKontak();
+  initWhatsAppShare();
   initActiveNav();
 }
 
-function escHtml(str) {
-  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function galleryImageUrl(url) {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    if (!parsed.searchParams.has('width')) parsed.searchParams.set('width', '800');
+    if (!parsed.searchParams.has('quality')) parsed.searchParams.set('quality', '80');
+    return parsed.toString();
+  } catch {
+    return url;
+  }
 }
 
-function escAttr(str) {
-  return String(str ?? '').replace(/[^a-z0-9_-]/gi, '');
+function initWhatsAppShare() {
+  const share = document.getElementById('share-whatsapp');
+  if (!share) return;
+  const terkumpul = totalDonasiTercatat();
+  const target = Number(DATA.donasi.target || 0);
+  const url = window.location.href.split('#')[0];
+  const text = `Bantu pembangunan ${DATA.majelis.nama}. Sudah terkumpul ${formatRupiah(terkumpul)} dari target ${formatRupiah(target)}. Yuk berdonasi: ${url}`;
+  share.href = `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
 
-function escAttrUrl(str) {
-  return String(str ?? '').replace(/"/g, '&quot;');
+function initRealtimeUpdates() {
+  if (!db || realtimeChannel) return;
+  realtimeChannel = db.channel('donors-realtime')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'donors',
+    }, () => {
+      loadPublicData().then(renderPublicPage);
+    })
+    .subscribe();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadPublicData();
   renderPublicPage();
+  initRealtimeUpdates();
 });

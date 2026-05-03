@@ -242,28 +242,11 @@ Tambahkan di `index.html`:
 
 ---
 
-### 14. Batasi akses admin hanya ke email tertentu
+### 14. Batasi akses admin lewat tabel admin_users
 
-Saat ini semua akun Supabase Auth yang valid bisa login ke `/admin.html`. Ini berisiko jika ada akun yang tidak sengaja terdaftar.
+Status: sudah dinaikkan dari whitelist JavaScript publik ke tabel `public.admin_users` + RLS.
 
-Solusi minimal di `admin.js`:
-
-```js
-const ALLOWED_ADMINS = ['panitia@majelis.org'];
-
-async function showDashboard() {
-  const { data: { session } } = await adminDb.auth.getSession();
-  if (!ALLOWED_ADMINS.includes(session?.user?.email)) {
-    await adminDb.auth.signOut();
-    showLogin();
-    loginStatus.textContent = 'Akun ini tidak memiliki akses admin.';
-    return;
-  }
-  // lanjut render dashboard
-}
-```
-
-Solusi lebih kuat: gunakan custom claims di Supabase Auth atau tabel `admin_users`.
+Admin login tetap memakai Supabase Auth, tetapi dashboard dan semua operasi kelola data hanya berjalan jika user punya baris aktif di `public.admin_users`. Patch SQL tersedia di `docs/planning/admin-users-rls-migration.sql`.
 
 ---
 

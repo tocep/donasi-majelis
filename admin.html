@@ -64,7 +64,16 @@
         <div class="admin-card">
           <div class="admin-card-head">
             <h2>Donatur</h2>
-            <button type="button" class="admin-btn admin-btn-primary" data-open-form="donor">Tambah Donatur</button>
+            <div class="admin-card-actions">
+              <button type="button" class="admin-btn admin-btn-light" id="export-donors-csv">Export CSV</button>
+              <button type="button" class="admin-btn admin-btn-primary" data-open-form="donor">Tambah Donatur</button>
+            </div>
+          </div>
+          <div class="admin-toolbar">
+            <label>
+              Cari Donatur
+              <input type="search" id="donor-search" placeholder="Nama donatur" />
+            </label>
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table">
@@ -72,6 +81,7 @@
               <tbody id="donors-body"></tbody>
             </table>
           </div>
+          <div class="admin-pagination" id="donor-pagination"></div>
         </div>
       </section>
 
@@ -214,6 +224,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260501-6"></script>
-  <script src="admin.js?v=20260501-6"></script>
+  <script src="utils.js?v=20260503"></script>
+  <script src="admin.js?v=20260503"></script>
 </body>
 </html>

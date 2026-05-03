@@ -3,10 +3,16 @@
    =================================================== */
 
 const adminDb = createSupabaseClient();
+const DONORS_PAGE_SIZE = 20;
 
 const state = {
+  adminUser: null,
   settings: null,
   donors: [],
+  donorSearch: '',
+  donorPage: 1,
+  donorsTotal: 0,
+  donorsTotalAmount: 0,
   payments: [],
   contacts: [],
   updates: [],
@@ -58,6 +64,8 @@ function bindAdminEvents() {
   document.getElementById('logout-btn').addEventListener('click', handleLogout);
   document.getElementById('report-form').addEventListener('submit', handleReportSave);
   document.getElementById('profile-form').addEventListener('submit', handleProfileSave);
+  document.getElementById('export-donors-csv').addEventListener('click', exportDonorsCsv);
+  document.getElementById('donor-search').addEventListener('input', handleDonorSearch);
   document.getElementById('modal-close').addEventListener('click', closeModal);
   document.getElementById('modal-cancel').addEventListener('click', closeModal);
   modalForm.addEventListener('submit', handleModalSave);
@@ -119,6 +127,7 @@ async function handleLogout() {
 }
 
 function showLogin() {
+  state.adminUser = null;
   loginView.hidden = false;
   dashboardView.hidden = true;
   if (adminDb) {
@@ -127,7 +136,17 @@ function showLogin() {
 }
 
 async function showDashboard() {
+  const { data: { session } } = await adminDb.auth.getSession();
+  const adminUser = await getActiveAdminUser(session);
+  if (!adminUser) {
+    await adminDb.auth.signOut();
+    showLogin();
+    loginStatus.textContent = 'Akun ini tidak memiliki akses admin.';
+    return;
+  }
+
   loginStatus.textContent = 'Login berhasil. Memuat data admin...';
+  state.adminUser = adminUser;
   loginView.hidden = true;
   dashboardView.hidden = false;
   try {
@@ -143,14 +162,34 @@ async function showDashboard() {
   }
 }
 
+async function getActiveAdminUser(session) {
+  const userId = session?.user?.id;
+  if (!userId) return null;
+
+  loginStatus.textContent = 'Memeriksa akses admin...';
+  const { data, error } = await withTimeout(
+    adminDb
+      .from('admin_users')
+      .select('id,user_id,email,role,is_active')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .limit(1),
+    10000,
+    'Login berhasil, tetapi pemeriksaan akses admin terlalu lama.'
+  );
+  if (error) throw new Error(`Gagal memeriksa akses admin: ${error.message}`);
+  return data?.[0] || null;
+}
+
 async function loadAdminData() {
   const settingsRes = await runAdminQuery(
     'site_settings',
     adminDb.from('site_settings').select('*').eq('id', 1).single()
   );
-  const donorsRes = await runAdminQuery(
-    'donors',
-    adminDb.from('donors').select('*').order('donation_date', { ascending: false })
+  const donorsRes = await loadDonorsData();
+  const donorsTotalRes = await runAdminQuery(
+    'donors total',
+    adminDb.from('donors').select('amount')
   );
   const paymentsRes = await runAdminQuery(
     'payment_methods',
@@ -163,6 +202,8 @@ async function loadAdminData() {
 
   state.settings = settingsRes.data;
   state.donors = donorsRes.data || [];
+  state.donorsTotal = donorsRes.count || 0;
+  state.donorsTotalAmount = (donorsTotalRes.data || []).reduce((sum, item) => sum + Number(item.amount || 0), 0);
   state.payments = paymentsRes.data || [];
   state.contacts = contactsRes.data || [];
   state.updates = [];
@@ -171,6 +212,21 @@ async function loadAdminData() {
   state.gallery = [];
   state.galleryError = '';
   state.galleryLoaded = false;
+}
+
+async function loadDonorsData() {
+  const offset = (state.donorPage - 1) * DONORS_PAGE_SIZE;
+  let query = adminDb
+    .from('donors')
+    .select('*', { count: 'exact' })
+    .order('donation_date', { ascending: false })
+    .range(offset, offset + DONORS_PAGE_SIZE - 1);
+
+  if (state.donorSearch) {
+    query = query.ilike('name', `%${state.donorSearch}%`);
+  }
+
+  return runAdminQuery('donors', query);
 }
 
 async function runAdminQuery(label, queryPromise, timeoutMs = 10000) {
@@ -234,12 +290,12 @@ function renderAdmin() {
 }
 
 function renderSummary() {
-  const total = state.donors.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const total = Number(state.donorsTotalAmount || 0);
   const target = Number(state.settings?.donation_target || 0);
   const used = Number(state.settings?.funds_used || 0);
   const cards = [
     ['Dana Masuk', formatRupiah(total)],
-    ['Jumlah Donatur', state.donors.length],
+    ['Jumlah Donatur', state.donorsTotal],
     ['Target', formatRupiah(target)],
     ['Dana Terpakai', formatRupiah(used)],
     ['Saldo', formatRupiah(Math.max(total - used, 0))],
@@ -273,14 +329,22 @@ function renderProfileForm() {
 }
 
 function renderDonors() {
+  const totalPages = Math.max(Math.ceil(state.donorsTotal / DONORS_PAGE_SIZE), 1);
   document.getElementById('donors-body').innerHTML = state.donors.map(item => `
     <tr>
-      <td>${escHtml(item.name)}</td>
+      <td>${escHtml(item.is_anonymous ? 'Hamba Allah' : item.name)}</td>
       <td>${escHtml(formatRupiah(item.amount))}</td>
       <td>${escHtml(formatDate(item.donation_date))}</td>
       <td>${rowActions('donor', item.id)}</td>
     </tr>
   `).join('') || emptyRow(4, 'Belum ada donatur.');
+  document.getElementById('donor-pagination').innerHTML = `
+    <button type="button" class="admin-btn admin-btn-light" id="donor-prev" ${state.donorPage <= 1 ? 'disabled' : ''}>Sebelumnya</button>
+    <span>Halaman ${state.donorPage} dari ${totalPages} (${state.donorsTotal} donatur)</span>
+    <button type="button" class="admin-btn admin-btn-light" id="donor-next" ${state.donorPage >= totalPages ? 'disabled' : ''}>Berikutnya</button>
+  `;
+  document.getElementById('donor-prev').onclick = () => changeDonorPage(state.donorPage - 1);
+  document.getElementById('donor-next').onclick = () => changeDonorPage(state.donorPage + 1);
   bindRowActions();
 }
 
@@ -388,7 +452,7 @@ function renderGallery() {
 
   document.getElementById('gallery-body').innerHTML = state.gallery.map(item => `
     <article class="admin-gallery-item">
-      <img src="${escAttr(item.image_url)}" alt="${escAttr(item.caption)}" />
+      <img src="${escHtml(item.image_url)}" alt="${escHtml(item.caption)}" />
       <div>
         <strong>${escHtml(item.caption)}</strong>
         <span>Urutan ${Number(item.sort_order || 0)}</span>
@@ -453,6 +517,8 @@ function modalFieldsHtml(type, item) {
       ${field('Nama Donatur', 'name', 'text', item?.name || 'Hamba Allah', true)}
       ${field('Nominal', 'amount', 'number', item?.amount || '', true, '1000')}
       ${field('Tanggal', 'donation_date', 'date', item?.donation_date || today(), true)}
+      <label class="admin-check"><input type="checkbox" name="is_anonymous" ${item?.is_anonymous ? 'checked' : ''} /> Tampilkan sebagai Hamba Allah</label>
+      <label>Catatan<textarea name="notes" rows="3">${escHtml(item?.notes || '')}</textarea></label>
     `;
   }
   if (type === 'payment') {
@@ -542,6 +608,8 @@ function buildPayload(type, form) {
       name: clean(form.get('name')),
       amount: Number(form.get('amount')),
       donation_date: clean(form.get('donation_date')),
+      is_anonymous: form.get('is_anonymous') === 'on',
+      notes: clean(form.get('notes')),
     };
   }
   if (type === 'payment') {
@@ -680,6 +748,7 @@ async function deleteItem(type, id) {
 
 async function uploadAsset(file, folder) {
   if (!file.type.startsWith('image/')) throw new Error('File harus berupa gambar.');
+  if (file.size > 3 * 1024 * 1024) throw new Error('Ukuran gambar maksimal 3 MB.');
   const safeName = file.name.replace(/[^a-z0-9._-]/gi, '-').toLowerCase();
   const path = `${folder}/${Date.now()}-${safeName}`;
   const { error } = await adminDb.storage.from(SUPABASE_CONFIG.storageBucket).upload(path, file, {
@@ -689,6 +758,55 @@ async function uploadAsset(file, folder) {
   if (error) throw error;
   const { data } = adminDb.storage.from(SUPABASE_CONFIG.storageBucket).getPublicUrl(path);
   return data.publicUrl;
+}
+
+async function handleDonorSearch(event) {
+  state.donorSearch = event.target.value.trim();
+  state.donorPage = 1;
+  try {
+    const donorsRes = await loadDonorsData();
+    state.donors = donorsRes.data || [];
+    state.donorsTotal = donorsRes.count || 0;
+    renderSummary();
+    renderDonors();
+  } catch (error) {
+    showToast(error.message || 'Gagal mencari donatur.', true);
+  }
+}
+
+async function changeDonorPage(page) {
+  state.donorPage = Math.max(page, 1);
+  try {
+    const donorsRes = await loadDonorsData();
+    state.donors = donorsRes.data || [];
+    state.donorsTotal = donorsRes.count || 0;
+    renderDonors();
+  } catch (error) {
+    showToast(error.message || 'Gagal memuat halaman donatur.', true);
+  }
+}
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function exportDonorsCsv() {
+  const rows = [['Nama', 'Nominal', 'Tanggal', 'Anonim', 'Catatan']];
+  state.donors.forEach(d => {
+    rows.push([
+      d.is_anonymous ? 'Hamba Allah' : d.name,
+      d.amount,
+      d.donation_date,
+      d.is_anonymous ? 'Ya' : 'Tidak',
+      d.notes || '',
+    ]);
+  });
+  const csv = rows.map(row => row.map(csvCell).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `donatur-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
 }
 
 function activateTab(name) {
@@ -750,10 +868,6 @@ function isValidWhatsapp(number) {
   return /^628[0-9]{8,15}$/.test(number);
 }
 
-function formatRupiah(amount) {
-  return 'Rp ' + Number(amount || 0).toLocaleString('id-ID');
-}
-
 function formatDate(date) {
   if (!date) return '-';
   return new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -766,19 +880,6 @@ function today() {
 function shortText(text, max) {
   const value = String(text || '');
   return value.length > max ? value.slice(0, max - 1) + '...' : value;
-}
-
-function showToast(message, isError = false) {
-  let toast = document.querySelector('.admin-toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.className = 'admin-toast';
-    document.body.appendChild(toast);
-  }
-  toast.textContent = message;
-  toast.classList.toggle('error', isError);
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2600);
 }
 
 function withTimeout(promise, timeoutMs, message) {
@@ -798,12 +899,4 @@ function authErrorMessage(error) {
     return 'Email admin belum dikonfirmasi di Supabase Auth.';
   }
   return error?.message || 'Login gagal. Coba beberapa saat lagi.';
-}
-
-function escHtml(str) {
-  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function escAttr(str) {
-  return escHtml(str).replace(/'/g, '&#039;');
 }

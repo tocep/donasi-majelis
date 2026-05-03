@@ -947,6 +947,38 @@ button { cursor: pointer; font-family: inherit; }
 }
 
 /* ===================================================
+   FAQ
+   =================================================== */
+.faq-list {
+  display: grid;
+  gap: .75rem;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.faq-item {
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.faq-item summary {
+  cursor: pointer;
+  color: var(--blue-dark);
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  padding: 1rem;
+}
+
+.faq-item p {
+  color: var(--gray-600);
+  padding: 0 1rem 1rem;
+  font-size: .92rem;
+}
+
+/* ===================================================
    FOOTER
    =================================================== */
 .footer {
@@ -1086,6 +1118,7 @@ body { padding-top: 60px; }
 }
 
 .admin-header-actions,
+.admin-card-actions,
 .admin-card-head,
 .admin-modal-actions,
 .admin-row-actions {
@@ -1098,6 +1131,10 @@ body { padding-top: 60px; }
 .admin-card-head {
   justify-content: space-between;
   margin-bottom: 1rem;
+}
+
+.admin-card-actions {
+  justify-content: flex-end;
 }
 
 .admin-tabs {
@@ -1202,6 +1239,30 @@ body { padding-top: 60px; }
   resize: vertical;
 }
 
+.admin-toolbar {
+  margin-bottom: 1rem;
+}
+
+.admin-toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  color: var(--gray-800);
+  font-weight: 700;
+  font-size: .86rem;
+}
+
+.admin-toolbar input {
+  width: min(100%, 340px);
+  border: 1.5px solid var(--gray-100);
+  border-radius: var(--radius-sm);
+  padding: .7rem .75rem;
+  color: var(--gray-800);
+  font: inherit;
+  font-weight: 500;
+  background: var(--white);
+}
+
 .admin-check {
   flex-direction: row !important;
   align-items: center;
@@ -1296,6 +1357,23 @@ body { padding-top: 60px; }
 .admin-empty {
   color: var(--gray-600);
   text-align: center !important;
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  color: var(--gray-600);
+  font-size: .88rem;
+  font-weight: 700;
+}
+
+.admin-pagination .admin-btn:disabled {
+  cursor: not-allowed;
+  opacity: .5;
 }
 
 .admin-warning {
