@@ -56,6 +56,20 @@ function calcTotalRab(breakdown, items) {
   }, 0);
 }
 
+function calcTotalTerealisasi(breakdown, items) {
+  const byParent = {};
+  items.forEach(i => {
+    if (!byParent[i.breakdown_id]) byParent[i.breakdown_id] = [];
+    byParent[i.breakdown_id].push(i);
+  });
+  return breakdown.reduce((s, b) => {
+    const subs = byParent[b.id] || [];
+    return s + (subs.length > 0
+      ? subs.reduce((ss, si) => ss + Number(si.realization_amount || 0), 0)
+      : Number(b.realization_amount || 0));
+  }, 0);
+}
+
 function createCopyButton(valueId, value) {
   const btn = document.createElement('button');
   btn.className = 'btn-copy';
@@ -93,7 +107,7 @@ async function loadPublicData() {
       db.from('building_updates').select('*').order('update_date', { ascending: false }),
       db.from('gallery_items').select('*').order('sort_order', { ascending: true }),
       db.from('fund_breakdown').select('*').order('sort_order', { ascending: true }),
-      db.from('fund_breakdown_items').select('id,breakdown_id,amount'),
+      db.from('fund_breakdown_items').select('id,breakdown_id,amount,realization_amount'),
     ]);
 
     const responses = [settingsRes, paymentsRes, contactsRes, donorsRes, updatesRes, galleryRes, breakdownRes, breakdownItemsRes];
@@ -112,7 +126,7 @@ async function loadPublicData() {
       },
       donasi: {
         target: calcTotalRab(breakdownRes.data || [], breakdownItemsRes.data || []),
-        danaTerpakai: Number(settings.funds_used || 0),
+        danaTerpakai: calcTotalTerealisasi(breakdownRes.data || [], breakdownItemsRes.data || []),
         laporanTerakhir: settings.report_date || '',
         catatanLaporan: settings.report_note || '',
         qrisUrl: settings.qris_url || '',

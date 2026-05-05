@@ -2,17 +2,32 @@ const reportDb = createSupabaseClient();
 
 document.addEventListener('DOMContentLoaded', loadReportData);
 
-function calcTotalRabLaporan(breakdown, items) {
-  const byParent = {};
+function makeByParent(items) {
+  const map = {};
   items.forEach(i => {
-    if (!byParent[i.breakdown_id]) byParent[i.breakdown_id] = [];
-    byParent[i.breakdown_id].push(i);
+    if (!map[i.breakdown_id]) map[i.breakdown_id] = [];
+    map[i.breakdown_id].push(i);
   });
+  return map;
+}
+
+function calcTotalRabLaporan(breakdown, items) {
+  const byParent = makeByParent(items);
   return breakdown.reduce((s, b) => {
     const subs = byParent[b.id] || [];
     return s + (subs.length > 0
       ? subs.reduce((ss, si) => ss + Number(si.amount || 0), 0)
       : Number(b.amount || 0));
+  }, 0);
+}
+
+function calcTotalTerealisasiLaporan(breakdown, items) {
+  const byParent = makeByParent(items);
+  return breakdown.reduce((s, b) => {
+    const subs = byParent[b.id] || [];
+    return s + (subs.length > 0
+      ? subs.reduce((ss, si) => ss + Number(si.realization_amount || 0), 0)
+      : Number(b.realization_amount || 0));
   }, 0);
 }
 
@@ -28,7 +43,7 @@ async function loadReportData() {
       reportDb.from('site_settings').select('*').eq('id', 1).single(),
       reportDb.from('donors').select('*').order('donation_date', { ascending: false }),
       reportDb.from('fund_breakdown').select('*').order('sort_order', { ascending: true }),
-      reportDb.from('fund_breakdown_items').select('id,breakdown_id,amount'),
+      reportDb.from('fund_breakdown_items').select('id,breakdown_id,amount,realization_amount'),
     ]);
     const failed = [settingsRes, donorsRes, breakdownRes, breakdownItemsRes].find(res => res.error);
     if (failed) throw failed.error;
@@ -37,8 +52,9 @@ async function loadReportData() {
     const donors = donorsRes.data || [];
     const breakdown = breakdownRes.data || [];
     const total = donors.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    const target = calcTotalRabLaporan(breakdown, breakdownItemsRes.data || []);
-    const used = Number(settings.funds_used || 0);
+    const items = breakdownItemsRes.data || [];
+    const target = calcTotalRabLaporan(breakdown, items);
+    const used = calcTotalTerealisasiLaporan(breakdown, items);
 
     summary.textContent = `Update ${settings.report_date || '-'} - ${donors.length} donatur tercatat.`;
     renderReportFunds(total, target, used);
