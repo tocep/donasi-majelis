@@ -13,3 +13,7 @@ build/
 # Editor folders
 .idea/
 .vscode/
+
+# Git worktrees & brainstorm artifacts
+.worktrees/
+.superpowers/
