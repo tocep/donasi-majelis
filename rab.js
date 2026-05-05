@@ -135,15 +135,15 @@ function renderRabTable(breakdown, itemsByParent, totalRab, totalReal) {
 
   const rows = [];
   breakdown.forEach(pos => {
-    const rab  = Number(pos.amount || 0);
+    const rab      = Number(pos.amount || 0);
+    const gid      = 'g-' + escSafeClass(pos.id);
+    const children = itemsByParent[pos.id] || [];
     const real = children.length > 0
       ? children.reduce((s, c) => s + Number(c.realization_amount || 0), 0)
       : Number(pos.realization_amount || 0);
     const sisa = Math.max(rab - real, 0);
     const pct  = rab > 0 ? Math.min(Math.round((real / rab) * 100), 100) : 0;
-    const fillCls  = pct === 100 ? 'rab-mini-fill-green' : 'rab-mini-fill-blue';
-    const gid      = 'g-' + escSafeClass(pos.id);
-    const children = itemsByParent[pos.id] || [];
+    const fillCls = pct === 100 ? 'rab-mini-fill-green' : 'rab-mini-fill-blue';
 
     const trParent = document.createElement('tr');
     trParent.className = 'rab-row-parent';
