@@ -29,16 +29,23 @@ async function loadRabData() {
     const allItems  = itemsRes.data || [];
     const donors    = donorsRes.data || [];
 
-    const terkumpul   = donors.reduce((s, d) => s + Number(d.amount || 0), 0);
-    const totalRab    = breakdown.reduce((s, b) => s + Number(b.amount || 0), 0);
-    const terealisasi = breakdown.reduce((s, b) => s + Number(b.realization_amount || 0), 0);
-    const sisa        = Math.max(totalRab - terkumpul, 0);
+    const terkumpul = donors.reduce((s, d) => s + Number(d.amount || 0), 0);
+    const totalRab  = breakdown.reduce((s, b) => s + Number(b.amount || 0), 0);
+    const sisa      = Math.max(totalRab - terkumpul, 0);
 
     const itemsByParent = {};
     allItems.forEach(item => {
       if (!itemsByParent[item.breakdown_id]) itemsByParent[item.breakdown_id] = [];
       itemsByParent[item.breakdown_id].push(item);
     });
+
+    const terealisasi = breakdown.reduce((s, b) => {
+      const subs = itemsByParent[b.id] || [];
+      const real = subs.length > 0
+        ? subs.reduce((ss, si) => ss + Number(si.realization_amount || 0), 0)
+        : Number(b.realization_amount || 0);
+      return s + real;
+    }, 0);
 
     renderRabCards(totalRab, terkumpul, sisa, terealisasi);
     renderRabProgress(totalRab, terkumpul, terealisasi);
@@ -129,7 +136,9 @@ function renderRabTable(breakdown, itemsByParent, totalRab, totalReal) {
   const rows = [];
   breakdown.forEach(pos => {
     const rab  = Number(pos.amount || 0);
-    const real = Number(pos.realization_amount || 0);
+    const real = children.length > 0
+      ? children.reduce((s, c) => s + Number(c.realization_amount || 0), 0)
+      : Number(pos.realization_amount || 0);
     const sisa = Math.max(rab - real, 0);
     const pct  = rab > 0 ? Math.min(Math.round((real / rab) * 100), 100) : 0;
     const fillCls  = pct === 100 ? 'rab-mini-fill-green' : 'rab-mini-fill-blue';
