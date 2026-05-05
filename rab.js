@@ -30,14 +30,21 @@ async function loadRabData() {
     const donors    = donorsRes.data || [];
 
     const terkumpul = donors.reduce((s, d) => s + Number(d.amount || 0), 0);
-    const totalRab  = breakdown.reduce((s, b) => s + Number(b.amount || 0), 0);
-    const sisa      = Math.max(totalRab - terkumpul, 0);
 
     const itemsByParent = {};
     allItems.forEach(item => {
       if (!itemsByParent[item.breakdown_id]) itemsByParent[item.breakdown_id] = [];
       itemsByParent[item.breakdown_id].push(item);
     });
+
+    const totalRab = breakdown.reduce((s, b) => {
+      const subs = itemsByParent[b.id] || [];
+      const rab  = subs.length > 0
+        ? subs.reduce((ss, si) => ss + Number(si.amount || 0), 0)
+        : Number(b.amount || 0);
+      return s + rab;
+    }, 0);
+    const sisa = Math.max(totalRab - terkumpul, 0);
 
     const terealisasi = breakdown.reduce((s, b) => {
       const subs = itemsByParent[b.id] || [];
@@ -135,9 +142,11 @@ function renderRabTable(breakdown, itemsByParent, totalRab, totalReal) {
 
   const rows = [];
   breakdown.forEach(pos => {
-    const rab      = Number(pos.amount || 0);
     const gid      = 'g-' + escSafeClass(pos.id);
     const children = itemsByParent[pos.id] || [];
+    const rab = children.length > 0
+      ? children.reduce((s, c) => s + Number(c.amount || 0), 0)
+      : Number(pos.amount || 0);
     const real = children.length > 0
       ? children.reduce((s, c) => s + Number(c.realization_amount || 0), 0)
       : Number(pos.realization_amount || 0);

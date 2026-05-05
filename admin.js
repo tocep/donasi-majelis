@@ -399,10 +399,12 @@ function renderBreakdown() {
   }
   const rows = state.breakdown.map(item => {
     const subItems = state.breakdownItems[item.id] || [];
+    const amt = subItems.length > 0
+      ? subItems.reduce((s, si) => s + Number(si.amount || 0), 0)
+      : Number(item.amount || 0);
     const real = subItems.length > 0
       ? subItems.reduce((s, si) => s + Number(si.realization_amount || 0), 0)
       : Number(item.realization_amount || 0);
-    const amt  = Number(item.amount || 0);
     const sisa = amt - real;
     const isOpen = state.openBreakdownId === item.id;
     const subLabel = subItems.length
@@ -692,7 +694,9 @@ function modalFieldsHtml(type, item) {
     const hasSubs = item?.id && (state.breakdownItems[item.id] || []).length > 0;
     return `
       ${field('Label RAB', 'label', 'text', item?.label || '', true)}
-      ${field('Nominal RAB', 'amount', 'number', item?.amount || '', true, '1000')}
+      ${hasSubs
+        ? `<p class="admin-muted" style="margin:4px 0 8px">Nominal RAB dihitung otomatis dari sub-item.</p>`
+        : field('Nominal RAB', 'amount', 'number', item?.amount || '', true, '1000')}
       ${hasSubs
         ? `<p class="admin-muted" style="margin:4px 0 8px">Terealisasi dihitung otomatis dari sub-item.</p>`
         : field('Terealisasi', 'realization_amount', 'number', item?.realization_amount || 0, false, '1000')}
