@@ -42,6 +42,20 @@ function totalDonasiTercatat() {
   return DATA.donatur.reduce((total, item) => total + Number(item.nominal || 0), 0);
 }
 
+function calcTotalRab(breakdown, items) {
+  const byParent = {};
+  items.forEach(i => {
+    if (!byParent[i.breakdown_id]) byParent[i.breakdown_id] = [];
+    byParent[i.breakdown_id].push(i);
+  });
+  return breakdown.reduce((s, b) => {
+    const subs = byParent[b.id] || [];
+    return s + (subs.length > 0
+      ? subs.reduce((ss, si) => ss + Number(si.amount || 0), 0)
+      : Number(b.amount || 0));
+  }, 0);
+}
+
 function createCopyButton(valueId, value) {
   const btn = document.createElement('button');
   btn.className = 'btn-copy';
@@ -70,6 +84,7 @@ async function loadPublicData() {
       updatesRes,
       galleryRes,
       breakdownRes,
+      breakdownItemsRes,
     ] = await Promise.all([
       db.from('site_settings').select('*').eq('id', 1).single(),
       db.from('payment_methods').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
@@ -78,9 +93,10 @@ async function loadPublicData() {
       db.from('building_updates').select('*').order('update_date', { ascending: false }),
       db.from('gallery_items').select('*').order('sort_order', { ascending: true }),
       db.from('fund_breakdown').select('*').order('sort_order', { ascending: true }),
+      db.from('fund_breakdown_items').select('id,breakdown_id,amount'),
     ]);
 
-    const responses = [settingsRes, paymentsRes, contactsRes, donorsRes, updatesRes, galleryRes, breakdownRes];
+    const responses = [settingsRes, paymentsRes, contactsRes, donorsRes, updatesRes, galleryRes, breakdownRes, breakdownItemsRes];
     const failed = responses.find(res => res.error);
     if (failed) throw failed.error;
 
@@ -95,7 +111,7 @@ async function loadPublicData() {
         fotoMajelis: settings.majelis_photo_url || '',
       },
       donasi: {
-        target: Number(settings.donation_target || 0),
+        target: calcTotalRab(breakdownRes.data || [], breakdownItemsRes.data || []),
         danaTerpakai: Number(settings.funds_used || 0),
         laporanTerakhir: settings.report_date || '',
         catatanLaporan: settings.report_note || '',

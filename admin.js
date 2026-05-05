@@ -321,7 +321,12 @@ function renderAdmin() {
 
 function renderSummary() {
   const total = Number(state.donorsTotalAmount || 0);
-  const target = Number(state.settings?.donation_target || 0);
+  const target = state.breakdown.reduce((s, b) => {
+    const subs = state.breakdownItems[b.id] || [];
+    return s + (subs.length > 0
+      ? subs.reduce((ss, si) => ss + Number(si.amount || 0), 0)
+      : Number(b.amount || 0));
+  }, 0);
   const used = Number(state.settings?.funds_used || 0);
   const cards = [
     ['Dana Masuk', formatRupiah(total)],
@@ -342,7 +347,6 @@ function renderSummary() {
 
 function renderReportForm() {
   const s = state.settings || {};
-  setValue('donation-target', s.donation_target || 0);
   setValue('funds-used', s.funds_used || 0);
   setValue('report-date', s.report_date || today());
   setValue('report-note', s.report_note || '');
@@ -878,15 +882,14 @@ async function handleReportSave(event) {
     if (file) qrisUrl = await uploadAsset(file, 'qris');
 
     const payload = {
-      donation_target: Number(value('donation-target')),
       funds_used: Number(value('funds-used')),
       report_date: value('report-date'),
       report_note: value('report-note'),
       qris_url: qrisUrl,
     };
 
-    if (payload.donation_target < 0 || payload.funds_used < 0 || !payload.report_date || !payload.report_note) {
-      showToast('Target, dana terpakai, tanggal, dan catatan laporan wajib valid.', true);
+    if (payload.funds_used < 0 || !payload.report_date || !payload.report_note) {
+      showToast('Dana terpakai, tanggal, dan catatan laporan wajib valid.', true);
       return;
     }
 
