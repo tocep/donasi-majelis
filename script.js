@@ -166,17 +166,20 @@ const navMenu = document.getElementById('nav-menu');
 const navLinks = document.querySelectorAll('.nav-link');
 
 window.addEventListener('scroll', () => {
-  navbar.classList.toggle('scrolled', window.scrollY > 20);
+  if (navbar) navbar.classList.toggle('scrolled', window.scrollY > 20);
 });
 
-hamburger.addEventListener('click', () => {
-  hamburger.classList.toggle('open');
-  navMenu.classList.toggle('open');
-  hamburger.setAttribute('aria-expanded', hamburger.classList.contains('open') ? 'true' : 'false');
-});
+if (hamburger && navMenu) {
+  hamburger.addEventListener('click', () => {
+    hamburger.classList.toggle('open');
+    navMenu.classList.toggle('open');
+    hamburger.setAttribute('aria-expanded', hamburger.classList.contains('open') ? 'true' : 'false');
+  });
+}
 
 navLinks.forEach(link => {
   link.addEventListener('click', () => {
+    if (!hamburger || !navMenu) return;
     hamburger.classList.remove('open');
     navMenu.classList.remove('open');
     hamburger.setAttribute('aria-expanded', 'false');
@@ -193,6 +196,8 @@ function initProgress() {
   const donaturEl = document.getElementById('stat-donatur');
   const targetEl = document.getElementById('stat-target');
   const noteEl = document.getElementById('progress-note');
+
+  if (!barEl || !pctEl || !terkEl || !donaturEl || !targetEl || !noteEl) return;
 
   terkEl.textContent = formatRupiah(terkumpul);
   donaturEl.textContent = DATA.donatur.length;
@@ -249,9 +254,29 @@ function initMetodeDonasi() {
   renderRekening();
   renderEwallet();
   renderQris();
+  initDonationNotes();
+}
+
+function initDonationNotes() {
+  const notes = document.querySelectorAll('.donasi-note');
+  if (notes.length === 0) return;
+
+  const contact = DATA.kontak.find(item => item.whatsapp && item.whatsapp.trim());
+  const phone = contact ? contact.whatsapp.trim() : '';
+  const whatsappHref = phone
+    ? `https://wa.me/${encodeURIComponent(phone)}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`
+    : '#kontak';
+  const whatsappTarget = phone ? ' target="_blank" rel="noopener"' : '';
+
+  notes.forEach(note => {
+    note.innerHTML = `📋 Setelah transfer, bisa konfirmasi di <a href="konfirmasi.html">form konfirmasi</a>. Atau hubungi <a href="${whatsappHref}"${whatsappTarget}>WhatsApp panitia</a>.`;
+  });
 }
 
 function initTransparansi() {
+  const grid = document.getElementById('fund-grid');
+  if (!grid) return;
+
   const terkumpul = totalDonasiTercatat();
   const target = Number(DATA.donasi.target || 0);
   const terpakai = Number(DATA.donasi.danaTerpakai || 0);
@@ -265,7 +290,6 @@ function initTransparansi() {
     { label: 'Sisa Target', value: formatRupiah(sisaTarget), tone: 'warning' },
   ];
 
-  const grid = document.getElementById('fund-grid');
   grid.innerHTML = '';
   items.forEach(item => {
     const card = document.createElement('div');
@@ -277,10 +301,16 @@ function initTransparansi() {
     grid.appendChild(card);
   });
 
-  document.getElementById('laporan-update').textContent =
-    DATA.donasi.laporanTerakhir ? `Update ${formatTanggal(DATA.donasi.laporanTerakhir)}` : 'Belum diperbarui';
-  document.getElementById('laporan-catatan').textContent =
-    DATA.donasi.catatanLaporan || 'Laporan dana akan diperbarui oleh panitia.';
+  const laporanUpdate = document.getElementById('laporan-update');
+  const laporanCatatan = document.getElementById('laporan-catatan');
+  if (laporanUpdate) {
+    laporanUpdate.textContent =
+      DATA.donasi.laporanTerakhir ? `Update ${formatTanggal(DATA.donasi.laporanTerakhir)}` : 'Belum diperbarui';
+  }
+  if (laporanCatatan) {
+    laporanCatatan.textContent =
+      DATA.donasi.catatanLaporan || 'Laporan dana akan diperbarui oleh panitia.';
+  }
 
   renderFundBreakdown();
   renderUpdatePembangunan();
@@ -314,6 +344,7 @@ function renderFundBreakdown() {
 
 function renderUpdatePembangunan() {
   const list = document.getElementById('update-list');
+  if (!list) return;
   list.innerHTML = '';
 
   if (DATA.updatePembangunan.length === 0) {
@@ -336,6 +367,7 @@ function renderUpdatePembangunan() {
 
 function renderRekening() {
   const list = document.getElementById('bank-list');
+  if (!list) return;
   list.innerHTML = '';
 
   if (DATA.donasi.rekening.length === 0) {
@@ -363,6 +395,7 @@ function renderRekening() {
 
 function renderEwallet() {
   const list = document.getElementById('ewallet-list');
+  if (!list) return;
   list.innerHTML = '';
 
   if (DATA.donasi.ewallet.length === 0) {
@@ -430,8 +463,10 @@ function copyText(elId, btn) {
 }
 
 function initTentang() {
-  document.getElementById('majelis-alamat').textContent = DATA.majelis.alamat || 'Alamat majelis belum diisi.';
-  document.getElementById('majelis-program').textContent = DATA.majelis.program || 'Program majelis belum diisi.';
+  const alamat = document.getElementById('majelis-alamat');
+  const program = document.getElementById('majelis-program');
+  if (alamat) alamat.textContent = DATA.majelis.alamat || 'Alamat majelis belum diisi.';
+  if (program) program.textContent = DATA.majelis.program || 'Program majelis belum diisi.';
 
   const photoWrap = document.getElementById('majelis-photo-wrap');
   if (photoWrap && DATA.majelis.fotoMajelis) {
@@ -441,6 +476,7 @@ function initTentang() {
 
 function initKontak() {
   const grid = document.getElementById('kontak-grid');
+  if (!grid) return;
   grid.innerHTML = '';
 
   if (DATA.kontak.length === 0) {
@@ -476,6 +512,7 @@ let lightboxImages = [];
 
 function initGaleri() {
   const grid = document.getElementById('gallery-grid');
+  if (!grid) return;
   grid.innerHTML = '';
   lightboxImages = [];
 
@@ -561,14 +598,21 @@ function lightboxNav(dir) {
   updateLightbox();
 }
 
-document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
-document.getElementById('lightbox-prev').addEventListener('click', () => lightboxNav(-1));
-document.getElementById('lightbox-next').addEventListener('click', () => lightboxNav(1));
-document.getElementById('lightbox').addEventListener('click', e => {
-  if (e.target === document.getElementById('lightbox')) closeLightbox();
-});
+const lightbox = document.getElementById('lightbox');
+const lightboxClose = document.getElementById('lightbox-close');
+const lightboxPrev = document.getElementById('lightbox-prev');
+const lightboxNext = document.getElementById('lightbox-next');
+
+if (lightbox && lightboxClose && lightboxPrev && lightboxNext) {
+  lightboxClose.addEventListener('click', closeLightbox);
+  lightboxPrev.addEventListener('click', () => lightboxNav(-1));
+  lightboxNext.addEventListener('click', () => lightboxNav(1));
+  lightbox.addEventListener('click', e => {
+    if (e.target === lightbox) closeLightbox();
+  });
+}
 document.addEventListener('keydown', e => {
-  if (!document.getElementById('lightbox').classList.contains('open')) return;
+  if (!lightbox || !lightbox.classList.contains('open')) return;
   if (e.key === 'Escape') closeLightbox();
   if (e.key === 'ArrowLeft') lightboxNav(-1);
   if (e.key === 'ArrowRight') lightboxNav(1);
@@ -576,6 +620,7 @@ document.addEventListener('keydown', e => {
 
 function initDonatur() {
   const grid = document.getElementById('donatur-grid');
+  if (!grid) return;
   grid.innerHTML = '';
 
   if (DATA.donatur.length === 0) {
@@ -609,7 +654,8 @@ function initActiveNav() {
       if (entry.isIntersecting) {
         const id = entry.target.id;
         navLinks.forEach(link => {
-          link.classList.toggle('active-link', link.getAttribute('href') === '#' + id);
+          const href = link.getAttribute('href') || '';
+          link.classList.toggle('active-link', href === '#' + id || href.endsWith('#' + id));
         });
       }
     });

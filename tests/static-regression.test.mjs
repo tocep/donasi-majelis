@@ -64,15 +64,31 @@ test('admin dashboard validates access through admin_users table', () => {
 
 test('public donation confirmation submits pending confirmations with proof upload', () => {
   const index = read('index.html');
+  const confirmation = read('konfirmasi.html');
   const script = read('script.js');
   const schema = read('docs/planning/supabase-schema.sql');
 
-  assert.match(index, /id="confirmation-form"/);
-  assert.match(index, /id="confirmation-proof"/);
+  assert.match(index, /href="konfirmasi\.html"/);
+  assert.doesNotMatch(index, /id="confirmation-form"/);
+  assert.match(confirmation, /id="confirmation-form"/);
+  assert.match(confirmation, /id="confirmation-proof"/);
+  assert.match(confirmation, /<script src="utils\.js"><\/script>\s*<script src="script\.js"><\/script>/);
   assert.match(script, /function initConfirmationForm\(\)/);
   assert.match(script, /\.from\('pending_confirmations'\)\.insert/);
   assert.match(script, /uploadPublicProof\(file\)/);
   assert.match(schema, /Public can upload confirmation proofs/);
+});
+
+test('donation notes link to confirmation form and committee WhatsApp', () => {
+  const index = read('index.html');
+  const script = read('script.js');
+
+  assert.doesNotMatch(index, /konfirmasi ke panitia via WhatsApp agar tercatat sebagai donatur/);
+  assert.match(script, /function initDonationNotes\(\)/);
+  assert.match(script, /form konfirmasi/);
+  assert.match(script, /href="konfirmasi\.html"/);
+  assert.match(script, /WhatsApp panitia/);
+  assert.match(script, /https:\/\/wa\.me\/\$\{encodeURIComponent\(phone\)\}/);
 });
 
 test('fund breakdown is loaded, rendered publicly, and managed in admin', () => {

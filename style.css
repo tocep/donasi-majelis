@@ -607,6 +607,13 @@ button { cursor: pointer; font-family: inherit; }
   color: var(--blue-dark);
 }
 
+.donasi-note a {
+  color: var(--blue);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* QRIS */
 .qris-wrap {
   display: flex;

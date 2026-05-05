@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Konfirmasi donasi pembangunan Majelis Nuruzh Zholam." />
+  <meta name="theme-color" content="#1a3a5c" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="id_ID" />
+  <meta property="og:title" content="Konfirmasi Donasi Majelis Nuruzh Zholam" />
+  <meta property="og:description" content="Kirim bukti transfer agar panitia dapat memverifikasi dan mencatat donasi Anda." />
+  <meta property="og:image" content="https://tocep.github.io/donasi-majelis/images/og-cover.png" />
+  <meta property="og:url" content="https://tocep.github.io/donasi-majelis/konfirmasi.html" />
+  <title>Konfirmasi Donasi | Majelis Nuruzh Zholam</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a3a5c'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-size='34' fill='white'%3E%E2%98%AA%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <header class="navbar" id="navbar">
+    <div class="container nav-inner">
+      <a href="index.html#beranda" class="nav-brand">
+        <span class="nav-logo">&#9770;</span>
+        <span class="nav-title">Majelis Nuruzh Zholam</span>
+      </a>
+      <button class="hamburger" id="hamburger" aria-label="Buka menu" aria-controls="nav-menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="nav-menu" id="nav-menu">
+        <a href="index.html#beranda" class="nav-link">Beranda</a>
+        <a href="index.html#progress" class="nav-link">Progress</a>
+        <a href="index.html#transparansi" class="nav-link">Transparansi</a>
+        <a href="index.html#donasi" class="nav-link">Cara Donasi</a>
+        <a href="#konfirmasi" class="nav-link active-link">Konfirmasi</a>
+        <a href="index.html#galeri" class="nav-link">Galeri</a>
+        <a href="index.html#donatur" class="nav-link">Donatur</a>
+        <a href="index.html#kontak" class="nav-link">Kontak</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===== KONFIRMASI DONASI ===== -->
+  <section class="section bg-light" id="konfirmasi">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Konfirmasi Donasi</h2>
+        <p class="section-subtitle">Sudah transfer? Kirim konfirmasi agar panitia bisa mencatat donasi Anda.</p>
+      </div>
+      <form class="confirmation-form" id="confirmation-form">
+        <label>
+          Nama Donatur
+          <input type="text" id="confirmation-name" autocomplete="name" required />
+        </label>
+        <label>
+          Nominal Donasi
+          <input type="number" id="confirmation-amount" min="1000" step="1000" required />
+        </label>
+        <label>
+          Tanggal Transfer
+          <input type="date" id="confirmation-date" required />
+        </label>
+        <label>
+          Nomor WhatsApp
+          <input type="tel" id="confirmation-whatsapp" inputmode="numeric" placeholder="628..." required />
+        </label>
+        <label class="confirmation-span-2">
+          Bukti Transfer
+          <input type="file" id="confirmation-proof" accept="image/*" required />
+        </label>
+        <label class="confirmation-span-2">
+          Catatan untuk Panitia
+          <textarea id="confirmation-notes" rows="3" placeholder="Opsional"></textarea>
+        </label>
+        <button type="submit" class="btn btn-submit confirmation-span-2">Kirim Konfirmasi</button>
+        <p class="confirmation-status confirmation-span-2" id="confirmation-status"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="nav-logo">&#9770;</span>
+        <span>Majelis Nuruzh Zholam</span>
+      </div>
+      <p class="footer-text">Semoga Allah menerima amal ibadah kita semua. Aamiin.</p>
+      <p class="footer-copy">&copy; 2026 Panitia Pembangunan Majelis Nuruzh Zholam</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="utils.js"></script>
+  <script src="script.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  </script>
+  <script src="analytics.js" defer></script>
+</body>
+</html>

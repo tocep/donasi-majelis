@@ -36,7 +36,7 @@
         <a href="#progress" class="nav-link">Progress</a>
         <a href="#transparansi" class="nav-link">Transparansi</a>
         <a href="#donasi" class="nav-link">Cara Donasi</a>
-        <a href="#konfirmasi" class="nav-link">Konfirmasi</a>
+        <a href="konfirmasi.html" class="nav-link">Konfirmasi</a>
         <a href="#galeri" class="nav-link">Galeri</a>
         <a href="#donatur" class="nav-link">Donatur</a>
         <a href="#kontak" class="nav-link">Kontak</a>
@@ -62,38 +62,6 @@
       <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#f0f4f8"/>
       </svg>
-    </div>
-  </section>
-
-  <!-- ===== FAQ ===== -->
-  <section class="section bg-light" id="faq">
-    <div class="container">
-      <div class="section-header">
-        <h2 class="section-title">FAQ Donasi</h2>
-        <p class="section-subtitle">Jawaban ringkas untuk pertanyaan yang paling sering ditanyakan jamaah.</p>
-      </div>
-      <div class="faq-list">
-        <details class="faq-item">
-          <summary>Apakah donasi bisa anonim?</summary>
-          <p>Bisa. Panitia dapat mencatat donatur sebagai Hamba Allah bila donatur ingin namanya tidak ditampilkan.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Bagaimana konfirmasi setelah transfer?</summary>
-          <p>Kirim bukti transfer ke WhatsApp panitia dengan nama, nominal, dan tanggal transfer.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Kapan nama donatur muncul di website?</summary>
-          <p>Nama muncul setelah panitia memverifikasi transfer dan mencatatnya di dashboard admin.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Di mana laporan penggunaan dana bisa dilihat?</summary>
-          <p>Ringkasan dana dan update pembangunan tersedia di bagian Transparansi Dana halaman ini.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Siapa yang bertanggung jawab atas pengelolaan dana?</summary>
-          <p>Dana dikelola oleh panitia pembangunan Majelis Nuruzh Zholam dan diperbarui secara berkala.</p>
-        </details>
-      </div>
     </div>
   </section>
 
@@ -125,6 +93,19 @@
           </div>
         </div>
         <p class="progress-note" id="progress-note">Bantu kami mencapai target. Setiap donasi sangat berarti!</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== DONATUR ===== -->
+  <section class="section" id="donatur">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Daftar Donatur</h2>
+        <p class="section-subtitle">Terima kasih atas kebaikan hati para donatur. Semoga Allah membalas dengan berlipat ganda.</p>
+      </div>
+      <div class="donatur-grid" id="donatur-grid">
+        <!-- Diisi dari script.js -->
       </div>
     </div>
   </section>
@@ -165,44 +146,6 @@
     </div>
   </section>
 
-  <!-- ===== KONFIRMASI DONASI ===== -->
-  <section class="section bg-light" id="konfirmasi">
-    <div class="container">
-      <div class="section-header">
-        <h2 class="section-title">Konfirmasi Donasi</h2>
-        <p class="section-subtitle">Sudah transfer? Kirim konfirmasi agar panitia bisa mencatat donasi Anda.</p>
-      </div>
-      <form class="confirmation-form" id="confirmation-form">
-        <label>
-          Nama Donatur
-          <input type="text" id="confirmation-name" autocomplete="name" required />
-        </label>
-        <label>
-          Nominal Donasi
-          <input type="number" id="confirmation-amount" min="1000" step="1000" required />
-        </label>
-        <label>
-          Tanggal Transfer
-          <input type="date" id="confirmation-date" required />
-        </label>
-        <label>
-          Nomor WhatsApp
-          <input type="tel" id="confirmation-whatsapp" inputmode="numeric" placeholder="628..." required />
-        </label>
-        <label class="confirmation-span-2">
-          Bukti Transfer
-          <input type="file" id="confirmation-proof" accept="image/*" required />
-        </label>
-        <label class="confirmation-span-2">
-          Catatan untuk Panitia
-          <textarea id="confirmation-notes" rows="3" placeholder="Opsional"></textarea>
-        </label>
-        <button type="submit" class="btn btn-submit confirmation-span-2">Kirim Konfirmasi</button>
-        <p class="confirmation-status confirmation-span-2" id="confirmation-status"></p>
-      </form>
-    </div>
-  </section>
-
   <!-- ===== CARA DONASI ===== -->
   <section class="section" id="donasi">
     <div class="container">
@@ -223,7 +166,7 @@
         <div class="bank-list" id="bank-list">
           <!-- Diisi dari script.js -->
         </div>
-        <p class="donasi-note">📋 Setelah transfer, konfirmasi ke panitia via WhatsApp agar tercatat sebagai donatur.</p>
+        <p class="donasi-note"></p>
       </div>
 
       <!-- Tab: QRIS -->
@@ -244,7 +187,7 @@
             </ul>
           </div>
         </div>
-        <p class="donasi-note">📋 Setelah transfer, konfirmasi ke panitia via WhatsApp agar tercatat sebagai donatur.</p>
+        <p class="donasi-note"></p>
       </div>
 
       <!-- Tab: E-Wallet -->
@@ -252,7 +195,7 @@
         <div class="ewallet-list" id="ewallet-list">
           <!-- Diisi dari script.js -->
         </div>
-        <p class="donasi-note">📋 Setelah transfer, konfirmasi ke panitia via WhatsApp agar tercatat sebagai donatur.</p>
+        <p class="donasi-note"></p>
       </div>
     </div>
   </section>
@@ -280,19 +223,6 @@
     </div>
     <button class="lightbox-next" id="lightbox-next" aria-label="Selanjutnya">›</button>
   </div>
-
-  <!-- ===== DONATUR ===== -->
-  <section class="section" id="donatur">
-    <div class="container">
-      <div class="section-header">
-        <h2 class="section-title">Daftar Donatur</h2>
-        <p class="section-subtitle">Terima kasih atas kebaikan hati para donatur. Semoga Allah membalas dengan berlipat ganda.</p>
-      </div>
-      <div class="donatur-grid" id="donatur-grid">
-        <!-- Diisi dari script.js -->
-      </div>
-    </div>
-  </section>
 
   <!-- ===== TENTANG ===== -->
   <section class="section bg-blue" id="tentang">
@@ -347,6 +277,38 @@
           <li>Kirim ke WhatsApp panitia beserta nama dan nomor yang digunakan</li>
           <li>Nama Anda akan segera ditambahkan ke daftar donatur</li>
         </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FAQ ===== -->
+  <section class="section bg-light" id="faq">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">FAQ Donasi</h2>
+        <p class="section-subtitle">Jawaban ringkas untuk pertanyaan yang paling sering ditanyakan jamaah.</p>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>Apakah donasi bisa anonim?</summary>
+          <p>Bisa. Panitia dapat mencatat donatur sebagai Hamba Allah bila donatur ingin namanya tidak ditampilkan.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Bagaimana konfirmasi setelah transfer?</summary>
+          <p>Kirim bukti transfer ke WhatsApp panitia dengan nama, nominal, dan tanggal transfer.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Kapan nama donatur muncul di website?</summary>
+          <p>Nama muncul setelah panitia memverifikasi transfer dan mencatatnya di dashboard admin.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Di mana laporan penggunaan dana bisa dilihat?</summary>
+          <p>Ringkasan dana dan update pembangunan tersedia di bagian Transparansi Dana halaman ini.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Siapa yang bertanggung jawab atas pengelolaan dana?</summary>
+          <p>Dana dikelola oleh panitia pembangunan Majelis Nuruzh Zholam dan diperbarui secara berkala.</p>
+        </details>
       </div>
     </div>
   </section>
