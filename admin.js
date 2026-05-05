@@ -1,4 +1,4 @@
-/* ===================================================
+﻿/* ===================================================
    Donasi Majelis Nuruzh Zholam — Admin Script
    =================================================== */
 
@@ -15,6 +15,9 @@ const state = {
   donorsTotalAmount: 0,
   confirmations: [],
   breakdown: [],
+  breakdownItems: {},
+  openBreakdownId: null,
+  openParentBreakdownId: null,
   payments: [],
   contacts: [],
   updates: [],
@@ -207,6 +210,10 @@ async function loadAdminData() {
     'fund_breakdown',
     adminDb.from('fund_breakdown').select('*').order('sort_order', { ascending: true })
   );
+  const breakdownItemsRes = await runAdminQuery(
+    'fund_breakdown_items',
+    adminDb.from('fund_breakdown_items').select('*').order('sort_order', { ascending: true })
+  );
   const contactsRes = await runAdminQuery(
     'contacts',
     adminDb.from('contacts').select('*').order('sort_order', { ascending: true })
@@ -218,6 +225,12 @@ async function loadAdminData() {
   state.donorsTotalAmount = (donorsTotalRes.data || []).reduce((sum, item) => sum + Number(item.amount || 0), 0);
   state.confirmations = confirmationsRes.data || [];
   state.breakdown = breakdownRes.data || [];
+  const rawItems = breakdownItemsRes.data || [];
+  state.breakdownItems = {};
+  rawItems.forEach(function(item) {
+    if (!state.breakdownItems[item.breakdown_id]) state.breakdownItems[item.breakdown_id] = [];
+    state.breakdownItems[item.breakdown_id].push(item);
+  });
   state.payments = paymentsRes.data || [];
   state.contacts = contactsRes.data || [];
   state.updates = [];
@@ -379,9 +392,91 @@ function renderPayments() {
 }
 
 function renderBreakdown() {
-  document.getElementById('breakdown-body').innerHTML = state.breakdown.map(item => `
-    <tr>
+  if (!state.breakdown.length) {
+    document.getElementById('breakdown-body').innerHTML = emptyRow(6, 'Belum ada rincian kebutuhan dana.');
+    return;
+  }
+  const rows = state.breakdown.map(item => {
+    const subItems = state.breakdownItems[item.id] || [];
+    const real = Number(item.realization_amount || 0);
+    const amt  = Number(item.amount || 0);
+    const sisa = amt - real;
+    const isOpen = state.openBreakdownId === item.id;
+    const subLabel = subItems.length
+      ? (isOpen ? 'Tutup Sub' : `Sub (${subItems.length})`)
+      : '+ Sub';
+    let html = `<tr>
       <td>${escHtml(item.label)}</td>
+      <td>${escHtml(formatRupiah(amt))}</td>
+      <td>${escHtml(formatRupiah(real))}</td>
+      <td>${escHtml(formatRupiah(sisa))}</td>
+      <td>${Number(item.sort_order || 0)}</td>
+      <td>
+        <div class="admin-row-actions">
+          <button type="button" class="admin-link-btn" data-edit="breakdown" data-id="${escAttr(item.id)}">Edit</button>
+          <button type="button" class="admin-link-btn danger" data-delete="breakdown" data-id="${escAttr(item.id)}">Hapus</button>
+          <button type="button" class="admin-link-btn" data-sub-breakdown="${escAttr(item.id)}">${escHtml(subLabel)}</button>
+        </div>
+      </td>
+    </tr>`;
+    if (isOpen) html += renderBreakdownSubPanel(item.id);
+    return html;
+  });
+  document.getElementById('breakdown-body').innerHTML = rows.join('');
+  bindRowActions();
+  bindBreakdownSubActions();
+}
+
+function renderBreakdownSubPanel(breakdownId) {
+  const subItems = state.breakdownItems[breakdownId] || [];
+  const addBtn = `<button type="button" class="admin-link-btn" data-add-sub="${escAttr(breakdownId)}">+ Tambah Sub-item</button>`;
+  if (!subItems.length) {
+    return `<tr><td colspan="6" style="background:#f9fafb;padding:8px 16px;font-size:13px;">Belum ada sub-item. ${addBtn}</td></tr>`;
+  }
+  const subRows = subItems.map(sub => {
+    const real = Number(sub.realization_amount || 0);
+    const amt  = Number(sub.amount || 0);
+    return `<tr style="background:#f0f4ff;font-size:13px;">
+      <td style="padding-left:32px">↳ ${escHtml(sub.label)}</td>
+      <td>${escHtml(formatRupiah(amt))}</td>
+      <td>${escHtml(formatRupiah(real))}</td>
+      <td>${escHtml(formatRupiah(amt - real))}</td>
+      <td>${Number(sub.sort_order || 0)}</td>
+      <td>
+        <div class="admin-row-actions">
+          <button type="button" class="admin-link-btn" data-edit="breakdown_item" data-id="${escAttr(sub.id)}" data-parent="${escAttr(breakdownId)}">Edit</button>
+          <button type="button" class="admin-link-btn danger" data-delete="breakdown_item" data-id="${escAttr(sub.id)}">Hapus</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  return subRows + `<tr style="background:#f9fafb;"><td colspan="6" style="padding:4px 16px;font-size:13px;">${addBtn}</td></tr>`;
+}
+
+function bindBreakdownSubActions() {
+  document.querySelectorAll('[data-sub-breakdown]').forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.subBreakdown;
+      state.openBreakdownId = state.openBreakdownId === id ? null : id;
+      renderBreakdown();
+    };
+  });
+  document.querySelectorAll('[data-add-sub]').forEach(btn => {
+    btn.onclick = () => {
+      state.openParentBreakdownId = btn.dataset.addSub;
+      openModal('breakdown_item');
+    };
+  });
+  document.querySelectorAll('[data-edit="breakdown_item"]').forEach(btn => {
+    btn.onclick = () => {
+      state.openParentBreakdownId = btn.dataset.parent;
+      openModal('breakdown_item', btn.dataset.id);
+    };
+  });
+  document.querySelectorAll('[data-delete="breakdown_item"]').forEach(btn => {
+    btn.onclick = () => deleteItem('breakdown_item', btn.dataset.id);
+  });
+}
       <td>${escHtml(formatRupiah(item.amount))}</td>
       <td>${Number(item.sort_order || 0)}</td>
       <td>${rowActions('breakdown', item.id)}</td>
@@ -600,7 +695,16 @@ function modalFieldsHtml(type, item) {
   if (type === 'breakdown') {
     return `
       ${field('Label RAB', 'label', 'text', item?.label || '', true)}
+      ${field('Nominal RAB', 'amount', 'number', item?.amount || '', true, '1000')}
+      ${field('Terealisasi', 'realization_amount', 'number', item?.realization_amount || 0, false, '1000')}
+      ${field('Urutan', 'sort_order', 'number', item?.sort_order || 0, true)}
+    `;
+  }
+  if (type === 'breakdown_item') {
+    return `
+      ${field('Label Sub-item', 'label', 'text', item?.label || '', true)}
       ${field('Nominal', 'amount', 'number', item?.amount || '', true, '1000')}
+      ${field('Terealisasi', 'realization_amount', 'number', item?.realization_amount || 0, false, '1000')}
       ${field('Urutan', 'sort_order', 'number', item?.sort_order || 0, true)}
     `;
   }
@@ -696,8 +800,19 @@ function buildPayload(type, form) {
     return {
       label: clean(form.get('label')),
       amount: Number(form.get('amount')),
+      realization_amount: Number(form.get('realization_amount') || 0),
       sort_order: Number(form.get('sort_order') || 0),
     };
+  }
+  if (type === 'breakdown_item') {
+    return {
+      breakdown_id: state.openParentBreakdownId,
+      label: clean(form.get('label')),
+      amount: Number(form.get('amount')),
+      realization_amount: Number(form.get('realization_amount') || 0),
+      sort_order: Number(form.get('sort_order') || 0),
+    };
+  }
   }
   if (type === 'contact') {
     return {
@@ -737,6 +852,10 @@ function validatePayload(type, payload) {
   }
   if (type === 'breakdown' && (!payload.label || payload.amount < 0)) {
     return 'Label dan nominal RAB wajib valid.';
+  }
+  if (type === 'breakdown_item' && (!payload.label || payload.amount < 0 || !payload.breakdown_id)) {
+    return 'Label, nominal, dan pos RAB induk wajib valid.';
+  }
   }
   if (type === 'contact' && (!payload.role_name || !payload.person_name || !isValidWhatsapp(payload.whatsapp))) {
     return 'Kontak wajib memakai nama, jabatan, dan WhatsApp format 628...';
@@ -1025,6 +1144,7 @@ function collection(type) {
     contact: state.contacts,
     update: state.updates,
     gallery: state.gallery,
+    breakdown_item: Object.values(state.breakdownItems).flat(),
   }[type] || [];
 }
 
@@ -1036,6 +1156,7 @@ function tableName(type) {
     contact: 'contacts',
     update: 'building_updates',
     gallery: 'gallery_items',
+    breakdown_item: 'fund_breakdown_items',
   }[type];
 }
 
@@ -1047,6 +1168,7 @@ function modalLabel(type) {
     contact: 'Kontak',
     update: 'Update Pembangunan',
     gallery: 'Foto Galeri',
+    breakdown_item: 'Sub-item RAB',
   }[type] || 'Data';
 }
 
