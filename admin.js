@@ -46,6 +46,7 @@ async function initAdmin() {
     return;
   }
 
+  loginStatus.textContent = '';
   bindAdminEvents();
   try {
     const { data } = await withTimeout(
