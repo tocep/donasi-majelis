@@ -543,3 +543,38 @@ using (
       and is_active = true
   )
 );
+
+-- === MIGRATION: RAB Detail (2026-05-05) ===
+
+-- Tambah kolom realisasi per pos RAB (input manual admin)
+alter table public.fund_breakdown
+  add column if not exists realization_amount integer not null default 0;
+
+-- Tabel sub-item per pos RAB
+create table if not exists public.fund_breakdown_items (
+  id uuid primary key default gen_random_uuid(),
+  breakdown_id uuid not null references public.fund_breakdown(id) on delete cascade,
+  label text not null,
+  amount integer not null default 0,
+  realization_amount integer not null default 0,
+  sort_order integer not null default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.fund_breakdown_items enable row level security;
+
+drop policy if exists "Public can read breakdown items" on public.fund_breakdown_items;
+create policy "Public can read breakdown items"
+  on public.fund_breakdown_items for select using (true);
+
+drop policy if exists "Authenticated admins can manage breakdown items" on public.fund_breakdown_items;
+create policy "Authenticated admins can manage breakdown items"
+  on public.fund_breakdown_items for all
+  using (
+    exists (
+      select 1 from public.admin_users
+      where user_id = (select auth.uid())
+        and is_active = true
+    )
+  );
