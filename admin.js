@@ -1,4 +1,4 @@
-﻿/* ===================================================
+/* ===================================================
    Donasi Majelis Nuruzh Zholam — Admin Script
    =================================================== */
 
@@ -478,13 +478,6 @@ function bindBreakdownSubActions() {
     btn.onclick = () => deleteItem('breakdown_item', btn.dataset.id);
   });
 }
-      <td>${escHtml(formatRupiah(item.amount))}</td>
-      <td>${Number(item.sort_order || 0)}</td>
-      <td>${rowActions('breakdown', item.id)}</td>
-    </tr>
-  `).join('') || emptyRow(4, 'Belum ada rincian kebutuhan dana.');
-  bindRowActions();
-}
 
 function renderConfirmations() {
   document.getElementById('confirmations-body').innerHTML = state.confirmations.map(item => `
@@ -814,7 +807,6 @@ function buildPayload(type, form) {
       sort_order: Number(form.get('sort_order') || 0),
     };
   }
-  }
   if (type === 'contact') {
     return {
       role_name: clean(form.get('role_name')),
@@ -856,7 +848,6 @@ function validatePayload(type, payload) {
   }
   if (type === 'breakdown_item' && (!payload.label || payload.amount < 0 || !payload.breakdown_id)) {
     return 'Label, nominal, dan pos RAB induk wajib valid.';
-  }
   }
   if (type === 'contact' && (!payload.role_name || !payload.person_name || !isValidWhatsapp(payload.whatsapp))) {
     return 'Kontak wajib memakai nama, jabatan, dan WhatsApp format 628...';
