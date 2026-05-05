@@ -1,0 +1,110 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAB Pembangunan - Majelis Nuruzh Zholam</title>
+  <meta name="description" content="Rencana Anggaran Biaya pembangunan Majelis Nuruzh Zholam." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a3a5c'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-size='34' fill='white'%3E%E2%98%AA%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="navbar" id="navbar">
+    <div class="container nav-inner">
+      <a href="index.html" class="nav-brand">
+        <span class="nav-logo">&#9770;</span>
+        <span class="nav-title">Majelis Nuruzh Zholam</span>
+      </a>
+      <button class="hamburger" id="hamburger" aria-label="Buka menu" aria-controls="nav-menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="nav-menu" id="nav-menu">
+        <a href="index.html#beranda" class="nav-link">Beranda</a>
+        <a href="index.html#progress" class="nav-link">Progress</a>
+        <a href="index.html#transparansi" class="nav-link">Transparansi</a>
+        <a href="rab.html" class="nav-link active">RAB</a>
+        <a href="index.html#donasi" class="nav-link">Cara Donasi</a>
+        <a href="konfirmasi.html" class="nav-link">Konfirmasi</a>
+        <a href="index.html#galeri" class="nav-link">Galeri</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section rab-page">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">Rencana Anggaran Biaya</h2>
+          <p class="section-subtitle">Transparansi kebutuhan dana, penghimpunan donasi, dan realisasi belanja pembangunan</p>
+        </div>
+
+        <div id="rab-content">
+          <div class="rab-cards" id="rab-cards">
+            <div class="rab-card card-total">
+              <div class="rab-card-label">Total RAB</div>
+              <div class="rab-card-value">Memuat...</div>
+              <div class="rab-card-note">&nbsp;</div>
+            </div>
+            <div class="rab-card card-terkumpul">
+              <div class="rab-card-label">Terkumpul</div>
+              <div class="rab-card-value">Memuat...</div>
+              <div class="rab-card-note">&nbsp;</div>
+            </div>
+            <div class="rab-card card-sisa">
+              <div class="rab-card-label">Sisa Kebutuhan</div>
+              <div class="rab-card-value">Memuat...</div>
+              <div class="rab-card-note">&nbsp;</div>
+            </div>
+            <div class="rab-card card-realisasi">
+              <div class="rab-card-label">Terealisasi</div>
+              <div class="rab-card-value">Memuat...</div>
+              <div class="rab-card-note">&nbsp;</div>
+            </div>
+          </div>
+
+          <div class="rab-dual-progress" id="rab-progress"></div>
+
+          <div class="rab-table-wrap">
+            <table class="rab-table">
+              <thead>
+                <tr>
+                  <th style="width:36%">Pos / Item Anggaran</th>
+                  <th style="width:16%;text-align:right">Nominal RAB</th>
+                  <th style="width:16%;text-align:right">Terealisasi</th>
+                  <th style="width:13%;text-align:right">Sisa RAB</th>
+                  <th style="width:19%;text-align:right">Progress</th>
+                </tr>
+              </thead>
+              <tbody id="rab-tbody">
+                <tr><td colspan="5" class="rab-empty">Memuat data RAB...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2025 Majelis Nuruzh Zholam &middot; <a href="index.html">Beranda</a> &middot; <a href="laporan.html">Laporan</a></p>
+    </div>
+  </footer>
+
+  <script src="supabase-config.js"></script>
+  <script src="utils.js"></script>
+  <script src="rab.js"></script>
+  <script>
+    document.getElementById('hamburger').addEventListener('click', function() {
+      var menu = document.getElementById('nav-menu');
+      var expanded = this.getAttribute('aria-expanded') === 'true';
+      this.setAttribute('aria-expanded', String(!expanded));
+      menu.classList.toggle('open');
+    });
+  </script>
+</body>
+</html>
