@@ -1655,3 +1655,69 @@ body { padding-top: 60px; }
   .admin-span-2 { grid-column: span 2; }
   .admin-gallery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* ===== HALAMAN RAB DETAIL ===== */
+.rab-page { padding: 24px 0 48px; }
+
+.rab-cards { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.rab-card {
+  flex: 1; min-width: 140px; background: #fff; border-radius: 10px;
+  padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-top: 4px solid #ccc;
+}
+.rab-card.card-total     { border-color: #6366f1; }
+.rab-card.card-terkumpul { border-color: #3b82f6; }
+.rab-card.card-sisa      { border-color: #f59e0b; }
+.rab-card.card-realisasi { border-color: #10b981; }
+.rab-card-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 5px; font-weight: 600; }
+.rab-card-value { font-size: 17px; font-weight: 700; line-height: 1.2; color: #111; }
+.rab-card.card-total     .rab-card-value { color: #4338ca; }
+.rab-card.card-terkumpul .rab-card-value { color: #1d4ed8; }
+.rab-card.card-sisa      .rab-card-value { color: #d97706; }
+.rab-card.card-realisasi .rab-card-value { color: #059669; }
+.rab-card-note { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+.rab-dual-progress { background: #f3f4f6; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
+.rab-prog-row { margin-bottom: 8px; }
+.rab-prog-row:last-child { margin-bottom: 0; }
+.rab-prog-label { display: flex; justify-content: space-between; font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+.rab-prog-bar { background: #e5e7eb; border-radius: 99px; height: 8px; overflow: hidden; }
+.rab-prog-fill-blue  { background: linear-gradient(90deg,#3b82f6,#6366f1); height: 8px; border-radius: 99px; }
+.rab-prog-fill-green { background: linear-gradient(90deg,#10b981,#34d399); height: 8px; border-radius: 99px; }
+
+.rab-table-wrap { overflow-x: auto; }
+.rab-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rab-table thead tr { background: #f5f3ff; }
+.rab-table th { padding: 9px 8px; text-align: left; font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; font-weight: 600; }
+.rab-table th:not(:first-child) { text-align: right; }
+.rab-row-parent { background: #fff; cursor: pointer; transition: background .15s; }
+.rab-row-parent:hover { background: #f5f3ff; }
+.rab-row-parent td { padding: 10px 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #1e3a5f; vertical-align: middle; }
+.rab-row-parent td:not(:first-child) { text-align: right; }
+.rab-toggle { display: inline-block; margin-right: 6px; font-size: 11px; color: #6366f1; transition: transform .2s; width: 14px; }
+.rab-row-parent.open .rab-toggle { transform: rotate(90deg); }
+.rab-row-child { background: #fafbff; }
+.rab-row-child.hidden { display: none; }
+.rab-row-child td { padding: 7px 8px 7px 28px; border-bottom: 1px solid #f0f2f7; font-size: 12px; color: #374151; vertical-align: middle; }
+.rab-row-child td:not(:first-child) { text-align: right; }
+.rab-row-total td { padding: 11px 8px; background: #f5f3ff; font-weight: 700; color: #1e3a5f; border-top: 2px solid #c7d2fe; }
+.rab-row-total td:not(:first-child) { text-align: right; }
+.rab-mini-bar-wrap { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.rab-mini-bar { background: #e5e7eb; border-radius: 99px; height: 6px; width: 60px; overflow: hidden; }
+.rab-mini-fill-green { background: #10b981; height: 6px; border-radius: 99px; }
+.rab-mini-fill-blue  { background: #3b82f6; height: 6px; border-radius: 99px; }
+.rab-pct { font-size: 10px; color: #9ca3af; min-width: 28px; text-align: right; }
+.rab-badge-lunas    { background: #d1fae5; color: #065f46; font-size: 10px; padding: 2px 6px; border-radius: 99px; font-weight: 600; margin-left: 6px; }
+.rab-badge-berjalan { background: #dbeafe; color: #1e40af; font-size: 10px; padding: 2px 6px; border-radius: 99px; font-weight: 600; margin-left: 6px; }
+.rab-badge-belum    { background: #f3f4f6; color: #9ca3af; font-size: 10px; padding: 2px 6px; border-radius: 99px; font-weight: 600; margin-left: 6px; }
+.rab-amt-zero { color: #d1d5db; }
+.rab-amt-real { color: #059669; font-weight: 500; }
+.rab-amt-sisa { color: #d97706; }
+.rab-empty { padding: 32px; text-align: center; color: #9ca3af; font-size: 14px; }
+
+@media (max-width: 600px) {
+  .rab-cards { gap: 8px; }
+  .rab-card { min-width: 120px; padding: 10px 12px; }
+  .rab-card-value { font-size: 14px; }
+  .rab-table th, .rab-table td { font-size: 11px; padding: 6px 5px; }
+  .rab-row-child td { padding-left: 18px; }
+}
