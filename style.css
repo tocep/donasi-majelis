@@ -171,7 +171,11 @@ button { cursor: pointer; font-family: inherit; }
   font-size: .9rem;
   transition: color var(--transition), background var(--transition);
 }
-.nav-link:hover { color: var(--white); background: rgba(255,255,255,.08); }
+.nav-link:hover,
+.nav-link.active-link {
+  color: var(--white);
+  background: rgba(255,255,255,.12);
+}
 
 /* Desktop nav */
 @media (min-width: 768px) {
@@ -1035,22 +1039,6 @@ button { cursor: pointer; font-family: inherit; }
 .kontak-card h3 { color: var(--blue-dark); margin-bottom: .25rem; font-size: 1rem; }
 .kontak-card p  { color: var(--gray-600); font-size: .875rem; }
 
-.konfirmasi-box {
-  background: var(--gray-50);
-  border: 1.5px solid var(--gray-100);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-}
-.konfirmasi-box h3 { color: var(--blue-dark); margin-bottom: 1rem; font-size: 1rem; }
-.konfirmasi-box ol {
-  list-style: decimal;
-  padding-left: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
-}
-.konfirmasi-box li { font-size: .9rem; color: var(--gray-600); }
-
 @media (min-width: 600px) {
   .kontak-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -1601,53 +1589,127 @@ body { padding-top: 60px; }
    REPORT PAGE
    =================================================== */
 .report-body {
-  padding-top: 0;
   background: var(--gray-50);
 }
 
 .report-page {
-  width: min(100%, 1000px);
-  margin: 0 auto;
-  padding: 1rem;
+  min-height: calc(100svh - 60px);
 }
 
-.report-header,
-.report-section {
-  background: var(--white);
-  border: 1px solid var(--gray-100);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
-  padding: 1rem;
+.report-section-header {
+  margin-bottom: 1.5rem;
+}
+
+.report-section-header .admin-kicker {
+  margin-bottom: .4rem;
+}
+
+.report-section-header .section-subtitle {
+  max-width: 680px;
+}
+
+.report-print-btn {
+  margin-top: 1rem;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
   margin-bottom: 1rem;
 }
 
-.report-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: flex-start;
+.report-panel {
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
 }
 
-.report-header h1,
-.report-section h2 {
+.report-grid .report-panel {
+  margin-bottom: 0;
+}
+
+.report-panel .panel-heading h2 {
   color: var(--blue-dark);
+  font-size: 1rem;
+}
+
+.report-fund-grid {
+  grid-template-columns: 1fr;
+}
+
+.report-fund-grid .fund-card {
+  min-height: 86px;
+}
+
+.report-fund-grid .fund-card strong {
+  font-size: 1.15rem;
+}
+
+.report-breakdown {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.report-breakdown .fund-breakdown-row {
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+}
+
+.report-chart-wrap {
+  overflow-x: auto;
+  padding-bottom: .25rem;
 }
 
 .monthly-chart {
   width: 100%;
+  min-width: 620px;
   height: auto;
   background: var(--gray-50);
   border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-100);
+  display: block;
+}
+
+.report-table-wrap {
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+}
+
+.report-table {
+  min-width: 560px;
+}
+
+.report-table td:nth-child(2) {
+  color: var(--blue-dark);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.report-table td:nth-child(3) {
+  color: var(--gray-600);
+  white-space: nowrap;
 }
 
 @media print {
-  .report-body { background: var(--white); }
-  .report-header,
-  .report-section { box-shadow: none; break-inside: avoid; }
-  .report-header .admin-btn { display: none; }
+  .report-body { background: var(--white); padding-top: 0; }
+  .navbar,
+  .footer,
+  .report-print-btn { display: none; }
+  .report-page { padding: 0; background: var(--white); }
+  .report-panel { box-shadow: none; break-inside: avoid; }
 }
 
 @media (min-width: 700px) {
+  .report-grid { grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); }
+  .report-fund-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-dashboard { padding: 1.5rem; }
   .admin-header { flex-direction: row; justify-content: space-between; align-items: center; }
   .admin-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }

@@ -79,6 +79,30 @@ test('public donation confirmation submits pending confirmations with proof uplo
   assert.match(schema, /Public can upload confirmation proofs/);
 });
 
+test('public navigation only lists standalone pages consistently', () => {
+  const script = read('script.js');
+  const publicPages = ['index.html', 'konfirmasi.html', 'rab.html', 'laporan.html'];
+  const expectedLinks = [
+    ['Beranda', 'index.html'],
+    ['RAB', 'rab.html'],
+    ['Konfirmasi', 'konfirmasi.html'],
+    ['Laporan', 'laporan.html'],
+  ];
+
+  for (const page of publicPages) {
+    const html = read(page);
+    const nav = html.match(/<nav class="nav-menu" id="nav-menu">([\s\S]*?)<\/nav>/)?.[1] ?? '';
+    const links = [...nav.matchAll(/<a href="([^"]+)" class="nav-link(?: active-link)?">([^<]+)<\/a>/g)]
+      .map(match => [match[2], match[1]]);
+
+    assert.deepEqual(links, expectedLinks, `${page} should use the standard public page menu`);
+    assert.doesNotMatch(nav, /href="[^"]*#/);
+  }
+
+  assert.match(script, /hashNavLinks/);
+  assert.match(read('style.css'), /\.nav-link\.active-link/);
+});
+
 test('donation notes link to confirmation form and committee WhatsApp', () => {
   const index = read('index.html');
   const script = read('script.js');
