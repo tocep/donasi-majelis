@@ -4,49 +4,115 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
+  <meta name="description" content="Laporan publik donasi pembangunan Majelis Nuruzh Zholam." />
+  <meta name="theme-color" content="#1a3a5c" />
   <title>Laporan Donasi Majelis Nuruzh Zholam</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a3a5c'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-size='34' fill='white'%3E%E2%98%AA%3C/text%3E%3C/svg%3E" />
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-9VJ2PXP9RM"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-9VJ2PXP9RM');</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="report-body">
-  <main class="report-page">
-    <header class="report-header">
-      <div>
-        <p class="admin-kicker">Laporan Publik</p>
-        <h1>Laporan Donasi Majelis Nuruzh Zholam</h1>
-        <p id="laporan-summary">Memuat laporan...</p>
-      </div>
-      <button type="button" class="admin-btn admin-btn-light" onclick="window.print()">Cetak</button>
-    </header>
+  <header class="navbar" id="navbar">
+    <div class="container nav-inner">
+      <a href="index.html" class="nav-brand">
+        <span class="nav-logo">&#9770;</span>
+        <span class="nav-title">Majelis Nuruzh Zholam</span>
+      </a>
+      <button class="hamburger" id="hamburger" aria-label="Buka menu" aria-controls="nav-menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="nav-menu" id="nav-menu">
+        <a href="index.html" class="nav-link">Beranda</a>
+        <a href="rab.html" class="nav-link">RAB</a>
+        <a href="konfirmasi.html" class="nav-link">Konfirmasi</a>
+        <a href="laporan.html" class="nav-link active-link">Laporan</a>
+      </nav>
+    </div>
+  </header>
 
-    <section class="report-section">
-      <h2>Ringkasan Dana</h2>
-      <div class="fund-grid" id="laporan-fund-grid"></div>
-    </section>
+  <main>
+    <section class="section bg-light report-page" id="laporan">
+      <div class="container">
+        <div class="section-header report-section-header">
+          <p class="admin-kicker">Laporan Publik</p>
+          <h1 class="section-title">Laporan Donasi Majelis Nuruzh Zholam</h1>
+          <p class="section-subtitle" id="laporan-summary">Memuat laporan...</p>
+          <button type="button" class="admin-btn admin-btn-light report-print-btn" onclick="window.print()">Cetak Laporan</button>
+        </div>
 
-    <section class="report-section">
-      <h2>Rincian Kebutuhan Dana</h2>
-      <div class="fund-breakdown" id="laporan-breakdown"></div>
-    </section>
+        <div class="report-grid">
+          <section class="report-panel report-panel-summary">
+            <div class="panel-heading">
+              <h2>Ringkasan Dana</h2>
+              <span>Terkini</span>
+            </div>
+            <div class="fund-grid report-fund-grid" id="laporan-fund-grid"></div>
+          </section>
 
-    <section class="report-section">
-      <h2>Rekap Donasi Bulanan</h2>
-      <canvas class="monthly-chart" id="monthly-chart" width="900" height="320"></canvas>
-    </section>
+          <section class="report-panel">
+            <div class="panel-heading">
+              <h2>Rincian Kebutuhan Dana</h2>
+              <span>RAB</span>
+            </div>
+            <div class="fund-breakdown report-breakdown" id="laporan-breakdown"></div>
+          </section>
+        </div>
 
-    <section class="report-section">
-      <h2>Riwayat Donatur</h2>
-      <div class="admin-table-wrap">
-        <table class="admin-table report-table">
-          <thead><tr><th>Nama</th><th>Nominal</th><th>Tanggal</th></tr></thead>
-          <tbody id="laporan-table-body"></tbody>
-        </table>
+        <section class="report-panel">
+          <div class="panel-heading">
+            <h2>Rekap Donasi Bulanan</h2>
+            <span>Grafik</span>
+          </div>
+          <div class="report-chart-wrap">
+            <canvas class="monthly-chart" id="monthly-chart" width="900" height="320"></canvas>
+          </div>
+        </section>
+
+        <section class="report-panel">
+          <div class="panel-heading">
+            <h2>Riwayat Donatur</h2>
+            <span>Publik</span>
+          </div>
+          <div class="admin-table-wrap report-table-wrap">
+            <table class="admin-table report-table">
+              <thead><tr><th>Nama</th><th>Nominal</th><th>Tanggal</th></tr></thead>
+              <tbody id="laporan-table-body"></tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </section>
   </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="nav-logo">&#9770;</span>
+        <span>Majelis Nuruzh Zholam</span>
+      </div>
+      <p class="footer-text">Semoga Allah menerima amal ibadah kita semua. Aamiin.</p>
+      <p class="footer-copy">&copy; 2026 Panitia Pembangunan Majelis Nuruzh Zholam</p>
+    </div>
+  </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="utils.js"></script>
   <script src="laporan.js"></script>
+  <script>
+    document.getElementById('hamburger').addEventListener('click', function() {
+      var menu = document.getElementById('nav-menu');
+      var expanded = this.getAttribute('aria-expanded') === 'true';
+      this.classList.toggle('open');
+      this.setAttribute('aria-expanded', String(!expanded));
+      menu.classList.toggle('open');
+    });
+  </script>
 </body>
 </html>
