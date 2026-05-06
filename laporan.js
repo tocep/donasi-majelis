@@ -58,7 +58,7 @@ async function loadReportData() {
 
     summary.textContent = `Update ${settings.report_date || '-'} - ${donors.length} donatur tercatat.`;
     renderReportFunds(total, target, used);
-    renderReportBreakdown(breakdown);
+    renderReportBreakdown(breakdown, items);
     renderMonthlyChart(donors);
     renderReportDonors(donors);
   } catch (error) {
@@ -68,24 +68,30 @@ async function loadReportData() {
 
 function renderReportFunds(total, target, used) {
   const values = [
-    ['Dana Masuk', formatRupiah(total)],
-    ['Dana Terpakai', formatRupiah(used)],
-    ['Saldo', formatRupiah(Math.max(total - used, 0))],
-    ['Target', formatRupiah(target)],
+    ['Dana Masuk', formatRupiah(total), 'fund-primary'],
+    ['Dana Terpakai', formatRupiah(used), 'fund-warning'],
+    ['Saldo', formatRupiah(Math.max(total - used, 0)), 'fund-success'],
+    ['Target', formatRupiah(target), 'fund-primary'],
   ];
-  document.getElementById('laporan-fund-grid').innerHTML = values.map(([label, value]) => `
-    <div class="fund-card fund-primary"><span>${escHtml(label)}</span><strong>${escHtml(value)}</strong></div>
+  document.getElementById('laporan-fund-grid').innerHTML = values.map(([label, value, tone]) => `
+    <div class="fund-card ${tone}"><span>${escHtml(label)}</span><strong>${escHtml(value)}</strong></div>
   `).join('');
 }
 
-function renderReportBreakdown(items) {
+function renderReportBreakdown(breakdown, subItems) {
+  const byParent = makeByParent(subItems);
   const wrap = document.getElementById('laporan-breakdown');
-  wrap.innerHTML = items.map(item => `
+  wrap.innerHTML = breakdown.map(item => {
+    const subs = byParent[item.id] || [];
+    const nominal = subs.length > 0
+      ? subs.reduce((s, si) => s + Number(si.amount || 0), 0)
+      : Number(item.amount || 0);
+    return `
     <div class="fund-breakdown-row">
       <span>${escHtml(item.label)}</span>
-      <strong>${formatRupiah(item.amount)}</strong>
-    </div>
-  `).join('') || '<p class="transparency-note">Rincian RAB belum tersedia.</p>';
+      <strong>${formatRupiah(nominal)}</strong>
+    </div>`;
+  }).join('') || '<p class="transparency-note">Rincian RAB belum tersedia.</p>';
 }
 
 function renderReportDonors(donors) {
