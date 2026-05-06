@@ -17,3 +17,5 @@ build/
 # Git worktrees & brainstorm artifacts
 .worktrees/
 .superpowers/
+.claude/
+docs/superpowers/
