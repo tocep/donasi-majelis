@@ -133,12 +133,24 @@ async function loadPublicData() {
         rekening: payments.filter(item => item.method_type === 'bank').map(mapPaymentMethod),
         ewallet: payments.filter(item => item.method_type === 'ewallet').map(mapPaymentMethod),
       },
-      rincianDana: (breakdownRes.data || []).map(item => ({
-        id: item.id,
-        label: item.label || '',
-        amount: Number(item.amount || 0),
-        sortOrder: Number(item.sort_order || 0),
-      })),
+      rincianDana: (() => {
+        const byParent = {};
+        (breakdownItemsRes.data || []).forEach(si => {
+          if (!byParent[si.breakdown_id]) byParent[si.breakdown_id] = [];
+          byParent[si.breakdown_id].push(si);
+        });
+        return (breakdownRes.data || []).map(item => {
+          const subs = byParent[item.id] || [];
+          return {
+            id: item.id,
+            label: item.label || '',
+            amount: subs.length > 0
+              ? subs.reduce((s, si) => s + Number(si.amount || 0), 0)
+              : Number(item.amount || 0),
+            sortOrder: Number(item.sort_order || 0),
+          };
+        });
+      })(),
       kontak: (contactsRes.data || []).map(item => ({
         id: item.id,
         jabatan: item.role_name || '',
@@ -678,12 +690,18 @@ function initDonatur() {
 }
 
 function initActiveNav() {
+  const hashNavLinks = [...navLinks].filter(link => {
+    const href = link.getAttribute('href') || '';
+    return href.startsWith('#') || href.includes('.html#');
+  });
+  if (hashNavLinks.length === 0) return;
+
   const sections = document.querySelectorAll('section[id]');
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         const id = entry.target.id;
-        navLinks.forEach(link => {
+        hashNavLinks.forEach(link => {
           const href = link.getAttribute('href') || '';
           link.classList.toggle('active-link', href === '#' + id || href.endsWith('#' + id));
         });
