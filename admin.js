@@ -26,6 +26,15 @@ const state = {
   gallery: [],
   galleryError: '',
   galleryLoaded: false,
+  finance: {
+    loaded: false,
+    error: '',
+    filter: { mode: 'month', yearMonth: null, dateFrom: null, dateTo: null },
+    categories: [],
+    donors: [],
+    expenses: [],
+    prevBalance: 0,
+  },
   modalType: '',
   editingId: null,
 };
@@ -87,12 +96,40 @@ function bindAdminEvents() {
       if (btn.dataset.adminTab === 'gallery' && !state.galleryLoaded && !state.galleryError) {
         retryGalleryLoad();
       }
+      if (btn.dataset.adminTab === 'finance' && !state.finance.loaded && !state.finance.error) {
+        const ym = today().slice(0, 7);
+        state.finance.filter = { mode: 'month', yearMonth: ym, dateFrom: null, dateTo: null };
+        loadAndRenderFinance();
+      }
     });
   });
 
   document.querySelectorAll('[data-open-form]').forEach(btn => {
     btn.addEventListener('click', () => openModal(btn.dataset.openForm));
   });
+
+  document.getElementById('finance-month-select').addEventListener('change', function () {
+    state.finance.filter = { mode: 'month', yearMonth: this.value, dateFrom: null, dateTo: null };
+    loadAndRenderFinance();
+  });
+  document.getElementById('finance-apply-btn').addEventListener('click', function () {
+    const from = document.getElementById('finance-date-from').value;
+    const to = document.getElementById('finance-date-to').value;
+    if (!from || !to) { showToast('Pilih tanggal mulai dan selesai.', true); return; }
+    if (from > to) { showToast('Tanggal mulai tidak boleh setelah tanggal selesai.', true); return; }
+    state.finance.filter = { mode: 'range', yearMonth: null, dateFrom: from, dateTo: to };
+    loadAndRenderFinance();
+  });
+  document.getElementById('finance-all-btn').addEventListener('click', function () {
+    state.finance.filter = { mode: 'all', yearMonth: null, dateFrom: null, dateTo: null };
+    loadAndRenderFinance();
+  });
+  document.getElementById('finance-print-btn').addEventListener('click', printFinanceReport);
+  document.getElementById('finance-csv-btn').addEventListener('click', exportFinanceCsv);
+  document.getElementById('finance-add-expense-btn').addEventListener('click', function () {
+    openModal('expense');
+  });
+  document.getElementById('finance-manage-cat-btn').addEventListener('click', openCategoryManager);
 }
 
 async function handleLogin(event) {
@@ -1152,6 +1189,7 @@ function collection(type) {
     update: state.updates,
     gallery: state.gallery,
     breakdown_item: Object.values(state.breakdownItems).flat(),
+    expense: state.finance.expenses,
   }[type] || [];
 }
 
@@ -1164,6 +1202,7 @@ function tableName(type) {
     update: 'building_updates',
     gallery: 'gallery_items',
     breakdown_item: 'fund_breakdown_items',
+    expense: 'expenses',
   }[type];
 }
 
@@ -1176,6 +1215,7 @@ function modalLabel(type) {
     update: 'Update Pembangunan',
     gallery: 'Foto Galeri',
     breakdown_item: 'Sub-item RAB',
+    expense: 'Pengeluaran',
   }[type] || 'Data';
 }
 
@@ -1230,4 +1270,228 @@ function authErrorMessage(error) {
     return 'Email admin belum dikonfirmasi di Supabase Auth.';
   }
   return error?.message || 'Login gagal. Coba beberapa saat lagi.';
+}
+
+async function loadAndRenderFinance() {
+  try {
+    if (!state.finance.loaded) {
+      await loadFinanceCategories();
+      await syncRabCategories();
+    }
+    await loadFinanceData();
+    state.finance.loaded = true;
+    state.finance.error = '';
+    renderFinance();
+  } catch (error) {
+    state.finance.error = error.message || 'Laporan keuangan gagal dimuat.';
+    showToast(state.finance.error, true);
+  }
+}
+
+async function loadFinanceCategories() {
+  const { data, error } = await adminDb
+    .from('expense_categories')
+    .select('*')
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  state.finance.categories = data || [];
+}
+
+async function syncRabCategories() {
+  const existingMap = Object.fromEntries(
+    state.finance.categories
+      .filter(c => c.breakdown_id)
+      .map(c => [c.breakdown_id, c])
+  );
+  for (const rab of state.breakdown) {
+    const existing = existingMap[rab.id];
+    if (!existing) {
+      await adminDb.from('expense_categories').insert({
+        name: rab.label,
+        breakdown_id: rab.id,
+        sort_order: rab.sort_order,
+      });
+    } else if (existing.name !== rab.label) {
+      await adminDb.from('expense_categories').update({ name: rab.label }).eq('id', existing.id);
+    }
+  }
+  await loadFinanceCategories();
+}
+
+async function loadFinanceData() {
+  const f = state.finance.filter;
+  let dateFrom = null;
+  let dateTo = null;
+
+  if (f.mode === 'month' && f.yearMonth) {
+    const [y, m] = f.yearMonth.split('-').map(Number);
+    dateFrom = `${f.yearMonth}-01`;
+    const lastDay = new Date(y, m, 0).getDate();
+    dateTo = `${f.yearMonth}-${String(lastDay).padStart(2, '0')}`;
+  } else if (f.mode === 'range') {
+    dateFrom = f.dateFrom;
+    dateTo = f.dateTo;
+  }
+
+  let donorQ = adminDb.from('donors').select('*').order('donation_date', { ascending: false });
+  if (dateFrom) donorQ = donorQ.gte('donation_date', dateFrom);
+  if (dateTo) donorQ = donorQ.lte('donation_date', dateTo);
+
+  let expenseQ = adminDb
+    .from('expenses')
+    .select('*, expense_categories(id, name, breakdown_id)')
+    .order('expense_date', { ascending: false });
+  if (dateFrom) expenseQ = expenseQ.gte('expense_date', dateFrom);
+  if (dateTo) expenseQ = expenseQ.lte('expense_date', dateTo);
+
+  let prevBalance = 0;
+  if (f.mode !== 'all' && dateFrom) {
+    const prevDate = new Date(dateFrom);
+    prevDate.setDate(prevDate.getDate() - 1);
+    const prevTo = prevDate.toISOString().slice(0, 10);
+    const [pd, pe] = await Promise.all([
+      adminDb.from('donors').select('amount').lte('donation_date', prevTo),
+      adminDb.from('expenses').select('amount').lte('expense_date', prevTo),
+    ]);
+    const prevDonors = (pd.data || []).reduce((s, d) => s + Number(d.amount || 0), 0);
+    const prevExp = (pe.data || []).reduce((s, e) => s + Number(e.amount || 0), 0);
+    prevBalance = prevDonors - prevExp;
+  }
+
+  const [donorRes, expenseRes] = await Promise.all([donorQ, expenseQ]);
+  if (donorRes.error) throw donorRes.error;
+  if (expenseRes.error) throw expenseRes.error;
+
+  state.finance.donors = donorRes.data || [];
+  state.finance.expenses = expenseRes.data || [];
+  state.finance.prevBalance = prevBalance;
+}
+
+function renderFinance() {
+  renderFinanceFilter();
+  renderFinanceCards();
+  renderFinanceDonors();
+  renderFinanceExpenses();
+}
+
+function periodLabel(f) {
+  if (f.mode === 'all') return 'Menampilkan: Semua waktu';
+  if (f.mode === 'month' && f.yearMonth) {
+    const d = new Date(f.yearMonth + '-02');
+    return 'Menampilkan: ' + d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  }
+  if (f.mode === 'range') return `Menampilkan: ${formatDate(f.dateFrom)} — ${formatDate(f.dateTo)}`;
+  return '';
+}
+
+function renderFinanceFilter() {
+  const select = document.getElementById('finance-month-select');
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const ym = d.toISOString().slice(0, 7);
+    const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    const sel = state.finance.filter.yearMonth === ym ? 'selected' : '';
+    options.push(`<option value="${escAttr(ym)}" ${sel}>${escHtml(label)}</option>`);
+  }
+  select.innerHTML = options.join('');
+  document.getElementById('finance-period-label').textContent = periodLabel(state.finance.filter);
+  if (state.finance.filter.dateFrom) document.getElementById('finance-date-from').value = state.finance.filter.dateFrom;
+  if (state.finance.filter.dateTo) document.getElementById('finance-date-to').value = state.finance.filter.dateTo;
+}
+
+function renderFinanceCards() {
+  const donors = state.finance.donors;
+  const expenses = state.finance.expenses;
+  const prev = state.finance.prevBalance;
+  const masuk = donors.reduce((s, d) => s + Number(d.amount || 0), 0);
+  const keluar = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const saldo = prev + masuk - keluar;
+
+  document.getElementById('finance-cards').innerHTML = `
+    <div class="admin-finance-formula">
+      <div class="admin-finance-formula-item">
+        <strong>${escHtml(formatRupiah(prev))}</strong>
+        <span>Sisa Bulan Lalu</span>
+      </div>
+      <span class="admin-finance-op">+</span>
+      <div class="admin-finance-formula-item">
+        <strong>${escHtml(formatRupiah(masuk))}</strong>
+        <span>Total Pemasukan</span>
+      </div>
+      <span class="admin-finance-op">&minus;</span>
+      <div class="admin-finance-formula-item">
+        <strong>${escHtml(formatRupiah(keluar))}</strong>
+        <span>Total Pengeluaran</span>
+      </div>
+      <span class="admin-finance-op admin-finance-eq">=</span>
+      <div class="admin-finance-formula-item admin-finance-result">
+        <strong>${escHtml(formatRupiah(saldo))}</strong>
+        <span>Saldo Akhir</span>
+      </div>
+    </div>
+    <div class="admin-finance-summary">
+      <div class="admin-finance-card finance-prev">
+        <span>Sisa Bulan Lalu</span>
+        <strong>${escHtml(formatRupiah(prev))}</strong>
+      </div>
+      <div class="admin-finance-card finance-in">
+        <span>Total Pemasukan</span>
+        <strong>${escHtml(formatRupiah(masuk))}</strong>
+        <small>${donors.length} donasi</small>
+      </div>
+      <div class="admin-finance-card finance-out">
+        <span>Total Pengeluaran</span>
+        <strong>${escHtml(formatRupiah(keluar))}</strong>
+        <small>${expenses.length} transaksi</small>
+      </div>
+      <div class="admin-finance-card finance-end">
+        <span>Saldo Akhir Periode</span>
+        <strong>${escHtml(formatRupiah(saldo))}</strong>
+      </div>
+    </div>
+  `;
+}
+
+function renderFinanceDonors() {
+  const donors = state.finance.donors;
+  const total = donors.reduce((s, d) => s + Number(d.amount || 0), 0);
+  document.getElementById('finance-donors-count').textContent = `${donors.length} donasi`;
+  const rows = donors.map(d => `
+    <tr>
+      <td>${escHtml(formatDate(d.donation_date))}</td>
+      <td>${escHtml(d.is_anonymous ? 'Hamba Allah' : d.name)}</td>
+      <td>${escHtml(d.notes || '—')}</td>
+      <td class="finance-amount-in">${escHtml(formatRupiah(d.amount))}</td>
+    </tr>
+  `).join('');
+  const totalRow = `<tr class="admin-table-total"><td colspan="3">Total Pemasukan</td><td class="finance-amount-in">${escHtml(formatRupiah(total))}</td></tr>`;
+  document.getElementById('finance-donors-body').innerHTML = rows
+    ? rows + totalRow
+    : emptyRow(4, 'Tidak ada pemasukan pada periode ini.');
+}
+
+function renderFinanceExpenses() {
+  const expenses = state.finance.expenses;
+  const total = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const rows = expenses.map(e => {
+    const cat = e.expense_categories;
+    const isRab = cat && cat.breakdown_id;
+    const badge = cat
+      ? `<span class="admin-cat-badge ${isRab ? 'rab' : 'custom'}">${escHtml(cat.name)}</span>`
+      : '—';
+    return `<tr>
+      <td>${escHtml(formatDate(e.expense_date))}</td>
+      <td>${badge}</td>
+      <td>${escHtml(e.description)}</td>
+      <td class="finance-amount-out">${escHtml(formatRupiah(e.amount))}</td>
+      <td>${rowActions('expense', e.id)}</td>
+    </tr>`;
+  }).join('');
+  const totalRow = `<tr class="admin-table-total"><td colspan="3">Total Pengeluaran</td><td class="finance-amount-out">${escHtml(formatRupiah(total))}</td><td></td></tr>`;
+  document.getElementById('finance-expenses-body').innerHTML = rows
+    ? rows + totalRow
+    : emptyRow(5, 'Tidak ada pengeluaran pada periode ini.');
+  bindRowActions();
 }
