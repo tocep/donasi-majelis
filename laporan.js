@@ -74,7 +74,7 @@ async function loadAndRender() {
     let donorQ = pubDb.from('donors').select('donation_date, name, is_anonymous, notes, amount').order('donation_date', { ascending: false });
     let expenseQ = pubDb
       .from('expenses')
-      .select('*, expense_categories(id, name, breakdown_id)')
+      .select('id, description, amount, expense_date, expense_categories(id, name, breakdown_id)')
       .order('expense_date', { ascending: false });
 
     if (dateFrom) {
