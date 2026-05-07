@@ -595,7 +595,7 @@ create table if not exists public.expenses (
   id           uuid primary key default gen_random_uuid(),
   category_id  uuid not null references public.expense_categories(id) on delete restrict,
   description  text not null,
-  amount       integer not null check (amount > 0),
+  amount       numeric not null check (amount > 0),
   expense_date date not null,
   notes        text not null default '',
   created_at   timestamptz not null default now(),
