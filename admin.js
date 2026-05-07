@@ -1606,3 +1606,106 @@ async function handleCategoryAdd(form) {
   bindCategoryManagerEvents();
   showToast('Kategori berhasil ditambah.');
 }
+
+function printFinanceReport() {
+  const donors = state.finance.donors;
+  const expenses = state.finance.expenses;
+  const prev = state.finance.prevBalance;
+  const masuk = donors.reduce((s, d) => s + Number(d.amount || 0), 0);
+  const keluar = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const saldo = prev + masuk - keluar;
+  const period = periodLabel(state.finance.filter).replace('Menampilkan: ', '');
+  const majelisName = escHtml((state.settings || {}).majelis_name || 'Majelis');
+
+  const donorRows = donors.map(d =>
+    `<tr><td>${escHtml(formatDate(d.donation_date))}</td><td>${escHtml(d.is_anonymous ? 'Hamba Allah' : d.name)}</td><td>${escHtml(d.notes || '-')}</td><td style="text-align:right;color:#2e7d32">${escHtml(formatRupiah(d.amount))}</td></tr>`
+  ).join('') || '<tr><td colspan="4" style="text-align:center;color:#aaa">Tidak ada pemasukan.</td></tr>';
+
+  const expenseRows = expenses.map(e => {
+    const cat = e.expense_categories;
+    return `<tr><td>${escHtml(formatDate(e.expense_date))}</td><td>${escHtml(cat ? cat.name : '-')}</td><td>${escHtml(e.description)}</td><td style="text-align:right;color:#e65100">${escHtml(formatRupiah(e.amount))}</td></tr>`;
+  }).join('') || '<tr><td colspan="4" style="text-align:center;color:#aaa">Tidak ada pengeluaran.</td></tr>';
+
+  const html = [
+    '<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"/>',
+    `<title>Laporan Keuangan ${escHtml(period)}</title>`,
+    '<style>',
+    'body{font-family:Arial,sans-serif;color:#222;font-size:13px;padding:24px}',
+    'h1{color:#1a3a5c;font-size:20px;margin:0}.sub{color:#555;margin-top:4px}.meta{color:#999;font-size:11px;margin-top:2px}',
+    '.header{text-align:center;border-bottom:2px solid #1a3a5c;padding-bottom:14px;margin-bottom:18px}',
+    '.cards{display:flex;gap:10px;margin-bottom:18px}',
+    '.card{flex:1;border-radius:6px;padding:10px;text-align:center}',
+    '.card span{display:block;font-size:10px;text-transform:uppercase;color:#555;font-weight:700}',
+    '.card strong{display:block;font-size:15px;font-weight:800;margin-top:3px}',
+    '.c1{background:#f3e5f5}.c1 strong{color:#6a1b9a}',
+    '.c2{background:#e8f4fe}.c2 strong{color:#1565c0}',
+    '.c3{background:#fff3e0}.c3 strong{color:#e65100}',
+    '.c4{background:#e8f5e9}.c4 strong{color:#2e7d32}',
+    'h3{font-size:11px;text-transform:uppercase;color:#888;margin:14px 0 6px}',
+    'table{width:100%;border-collapse:collapse;font-size:12px}',
+    'th{background:#f7f8fa;text-align:left;padding:6px 8px;border-bottom:2px solid #ddd;font-size:10px;font-weight:700;text-transform:uppercase;color:#888}',
+    'td{padding:5px 8px;border-bottom:1px solid #eee}',
+    'tfoot td{font-weight:700;background:#f7f8fa;border-top:2px solid #ddd}',
+    '</style></head><body>',
+    '<div class="header">',
+    `<h1>${majelisName}</h1>`,
+    `<p class="sub">Laporan Keuangan — ${escHtml(period)}</p>`,
+    `<p class="meta">Dicetak: ${escHtml(formatDate(today()))}</p>`,
+    '</div>',
+    '<div class="cards">',
+    `<div class="card c1"><span>Sisa Bulan Lalu</span><strong>${escHtml(formatRupiah(prev))}</strong></div>`,
+    `<div class="card c2"><span>Total Pemasukan</span><strong>${escHtml(formatRupiah(masuk))}</strong></div>`,
+    `<div class="card c3"><span>Total Pengeluaran</span><strong>${escHtml(formatRupiah(keluar))}</strong></div>`,
+    `<div class="card c4"><span>Saldo Akhir</span><strong>${escHtml(formatRupiah(saldo))}</strong></div>`,
+    '</div>',
+    `<h3>Rincian Pemasukan (${donors.length} donasi)</h3>`,
+    '<table><thead><tr><th>Tanggal</th><th>Donatur</th><th>Catatan</th><th style="text-align:right">Nominal</th></tr></thead>',
+    `<tbody>${donorRows}</tbody>`,
+    `<tfoot><tr><td colspan="3">Total</td><td style="text-align:right;color:#2e7d32">${escHtml(formatRupiah(masuk))}</td></tr></tfoot></table>`,
+    `<h3>Rincian Pengeluaran (${expenses.length} transaksi)</h3>`,
+    '<table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th style="text-align:right">Nominal</th></tr></thead>',
+    `<tbody>${expenseRows}</tbody>`,
+    `<tfoot><tr><td colspan="3">Total</td><td style="text-align:right;color:#e65100">${escHtml(formatRupiah(keluar))}</td></tr></tfoot></table>`,
+    '</body></html>',
+  ].join('');
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) { showToast('Pop-up diblokir browser. Izinkan pop-up untuk halaman ini.', true); URL.revokeObjectURL(url); return; }
+  win.addEventListener('load', function () {
+    win.print();
+    URL.revokeObjectURL(url);
+  });
+}
+
+function exportFinanceCsv() {
+  const f = state.finance.filter;
+  const period = (f.mode === 'month' && f.yearMonth)
+    ? f.yearMonth
+    : (f.mode === 'range' ? `${f.dateFrom}_${f.dateTo}` : 'semua-waktu');
+
+  const donorRows = [['Tanggal', 'Donatur', 'Catatan', 'Nominal']];
+  state.finance.donors.forEach(d => {
+    donorRows.push([d.donation_date, d.is_anonymous ? 'Hamba Allah' : d.name, d.notes || '', d.amount]);
+  });
+  downloadCsv(donorRows, `pemasukan-${period}.csv`);
+
+  const expenseRows = [['Tanggal', 'Kategori', 'Keterangan', 'Nominal']];
+  state.finance.expenses.forEach(e => {
+    expenseRows.push([e.expense_date, e.expense_categories ? e.expense_categories.name : '', e.description, e.amount]);
+  });
+  downloadCsv(expenseRows, `pengeluaran-${period}.csv`);
+}
+
+function downloadCsv(rows, filename) {
+  const bom = '﻿';
+  const csv = bom + rows.map(row => row.map(csvCell).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
