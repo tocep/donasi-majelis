@@ -814,6 +814,10 @@ async function handleModalSave(event) {
   event.preventDefault();
   const form = new FormData(modalForm);
   const type = state.modalType;
+  if (type === 'expense-category') {
+    await handleCategoryAdd(form);
+    return;
+  }
   let payload = buildPayload(type, form);
   const validation = validatePayload(type, payload);
   if (validation) {
@@ -1539,4 +1543,66 @@ function renderFinanceExpenses() {
     ? rows + totalRow
     : emptyRow(5, 'Tidak ada pengeluaran pada periode ini.');
   bindRowActions();
+}
+
+function openCategoryManager() {
+  state.modalType = 'expense-category';
+  state.editingId = null;
+  modalTitle.textContent = 'Kelola Kategori Pengeluaran';
+  modalFields.innerHTML = categoryManagerHtml();
+  bindCategoryManagerEvents();
+  modal.showModal();
+}
+
+function categoryManagerHtml() {
+  const rabCats = state.finance.categories.filter(c => c.breakdown_id);
+  const customCats = state.finance.categories.filter(c => !c.breakdown_id);
+
+  const rabRows = rabCats.map(c => `
+    <div class="admin-cat-manager-item">
+      <span class="admin-cat-badge rab">${escHtml(c.name)}</span>
+      <span class="admin-muted">Dari RAB</span>
+    </div>
+  `).join('') || '<p class="admin-muted">Belum ada kategori dari RAB.</p>';
+
+  const customRows = customCats.map(c => `
+    <div class="admin-cat-manager-item">
+      <span class="admin-cat-badge custom">${escHtml(c.name)}</span>
+      <button type="button" class="admin-btn admin-btn-light" style="padding:4px 10px;font-size:11px" data-delete-cat="${escAttr(c.id)}">Hapus</button>
+    </div>
+  `).join('') || '<p class="admin-muted">Belum ada kategori kustom.</p>';
+
+  return `
+    <p class="admin-muted" style="margin-bottom:8px">Kategori dari RAB tidak dapat dihapus di sini.</p>
+    <div class="admin-cat-manager-list">${rabRows}${customRows}</div>
+    <hr style="margin:12px 0;border:none;border-top:1px dashed #e0e0e0" />
+    <label>Nama Kategori Baru
+      <input type="text" name="cat_name" placeholder="cth: Honorarium, Konsumsi tukang..." />
+    </label>
+  `;
+}
+
+function bindCategoryManagerEvents() {
+  modalFields.querySelectorAll('[data-delete-cat]').forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm('Hapus kategori ini? Pastikan tidak ada pengeluaran yang menggunakannya.')) return;
+      const { error } = await adminDb.from('expense_categories').delete().eq('id', btn.dataset.deleteCat);
+      if (error) { showToast(error.message || 'Gagal menghapus kategori.', true); return; }
+      await loadFinanceCategories();
+      modalFields.innerHTML = categoryManagerHtml();
+      bindCategoryManagerEvents();
+      showToast('Kategori berhasil dihapus.');
+    };
+  });
+}
+
+async function handleCategoryAdd(form) {
+  const name = clean(form.get('cat_name'));
+  if (!name) { showToast('Nama kategori wajib diisi.', true); return; }
+  const { error } = await adminDb.from('expense_categories').insert({ name, sort_order: 99 });
+  if (error) { showToast(error.message || 'Gagal menambah kategori.', true); return; }
+  await loadFinanceCategories();
+  modalFields.innerHTML = categoryManagerHtml();
+  bindCategoryManagerEvents();
+  showToast('Kategori berhasil ditambah.');
 }
