@@ -1,135 +1,250 @@
-const reportDb = createSupabaseClient();
+﻿const pubDb = createSupabaseClient();
 
-document.addEventListener('DOMContentLoaded', loadReportData);
+const state = {
+  filter: { mode: 'month', yearMonth: '', dateFrom: null, dateTo: null },
+  categories: [],
+  donors: [],
+  expenses: [],
+  prevBalance: 0,
+};
 
-function makeByParent(items) {
-  const map = {};
-  items.forEach(i => {
-    if (!map[i.breakdown_id]) map[i.breakdown_id] = [];
-    map[i.breakdown_id].push(i);
-  });
-  return map;
-}
+document.addEventListener('DOMContentLoaded', () => {
+  initMonthSelect();
+  bindEvents();
+  loadAndRender();
+});
 
-function calcTotalRabLaporan(breakdown, items) {
-  const byParent = makeByParent(items);
-  return breakdown.reduce((s, b) => {
-    const subs = byParent[b.id] || [];
-    return s + (subs.length > 0
-      ? subs.reduce((ss, si) => ss + Number(si.amount || 0), 0)
-      : Number(b.amount || 0));
-  }, 0);
-}
-
-function calcTotalTerealisasiLaporan(breakdown, items) {
-  const byParent = makeByParent(items);
-  return breakdown.reduce((s, b) => {
-    const subs = byParent[b.id] || [];
-    return s + (subs.length > 0
-      ? subs.reduce((ss, si) => ss + Number(si.realization_amount || 0), 0)
-      : Number(b.realization_amount || 0));
-  }, 0);
-}
-
-async function loadReportData() {
-  const summary = document.getElementById('laporan-summary');
-  if (!reportDb) {
-    summary.textContent = 'Konfigurasi Supabase belum diisi.';
-    return;
+function initMonthSelect() {
+  const now = new Date();
+  const ym = now.toISOString().slice(0, 7);
+  state.filter.yearMonth = ym;
+  const select = document.getElementById('pub-month-select');
+  const options = [];
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = d.toISOString().slice(0, 7);
+    const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    const sel = val === ym ? 'selected' : '';
+    options.push('<option value="' + escAttr(val) + '" ' + sel + '>' + escHtml(label) + '</option>');
   }
+  select.innerHTML = options.join('');
+}
 
+function bindEvents() {
+  document.getElementById('pub-month-select').addEventListener('change', function(e) {
+    state.filter.mode = 'month';
+    state.filter.yearMonth = e.target.value;
+    loadAndRender();
+  });
+  document.getElementById('pub-apply-btn').addEventListener('click', function() {
+    const from = document.getElementById('pub-date-from').value;
+    const to = document.getElementById('pub-date-to').value;
+    if (!from || !to) { showToast('Isi kedua tanggal untuk rentang kustom.', true); return; }
+    if (from > to) { showToast('Tanggal mulai tidak boleh setelah tanggal selesai.', true); return; }
+    state.filter.mode = 'custom';
+    state.filter.dateFrom = from;
+    state.filter.dateTo = to;
+    loadAndRender();
+  });
+  document.getElementById('pub-all-btn').addEventListener('click', function() {
+    state.filter.mode = 'all';
+    loadAndRender();
+  });
+}
+
+async function loadAndRender() {
+  document.getElementById('pub-period-label').textContent = periodLabel();
   try {
-    const [settingsRes, donorsRes, breakdownRes, breakdownItemsRes] = await Promise.all([
-      reportDb.from('site_settings').select('*').eq('id', 1).single(),
-      reportDb.from('donors').select('*').order('donation_date', { ascending: false }),
-      reportDb.from('fund_breakdown').select('*').order('sort_order', { ascending: true }),
-      reportDb.from('fund_breakdown_items').select('id,breakdown_id,amount,realization_amount'),
-    ]);
-    const failed = [settingsRes, donorsRes, breakdownRes, breakdownItemsRes].find(res => res.error);
-    if (failed) throw failed.error;
+    const f = state.filter;
+    let dateFrom = null;
+    let dateTo = null;
 
-    const settings = settingsRes.data || {};
-    const donors = donorsRes.data || [];
-    const breakdown = breakdownRes.data || [];
-    const total = donors.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    const items = breakdownItemsRes.data || [];
-    const target = calcTotalRabLaporan(breakdown, items);
-    const used = calcTotalTerealisasiLaporan(breakdown, items);
+    if (f.mode === 'month' && f.yearMonth) {
+      const parts = f.yearMonth.split('-').map(Number);
+      const y = parts[0];
+      const m = parts[1];
+      dateFrom = f.yearMonth + '-01';
+      const lastDay = new Date(y, m, 0).getDate();
+      dateTo = f.yearMonth + '-' + String(lastDay).padStart(2, '0');
+    } else if (f.mode === 'custom') {
+      dateFrom = f.dateFrom;
+      dateTo = f.dateTo;
+    }
 
-    summary.textContent = `Update ${settings.report_date || '-'} - ${donors.length} donatur tercatat.`;
-    renderReportFunds(total, target, used);
-    renderReportBreakdown(breakdown, items);
-    renderMonthlyChart(donors);
-    renderReportDonors(donors);
-  } catch (error) {
-    summary.textContent = error.message || 'Laporan belum dapat dimuat.';
+    let catQ = pubDb.from('expense_categories').select('id, name, breakdown_id').eq('is_active', true);
+    let donorQ = pubDb.from('donors').select('*').order('donation_date', { ascending: false });
+    let expenseQ = pubDb
+      .from('expenses')
+      .select('*, expense_categories(id, name, breakdown_id)')
+      .order('expense_date', { ascending: false });
+
+    if (dateFrom) {
+      donorQ = donorQ.gte('donation_date', dateFrom);
+      expenseQ = expenseQ.gte('expense_date', dateFrom);
+    }
+    if (dateTo) {
+      donorQ = donorQ.lte('donation_date', dateTo);
+      expenseQ = expenseQ.lte('expense_date', dateTo);
+    }
+
+    let prevBalance = 0;
+    if (f.mode !== 'all' && dateFrom) {
+      const prevDate = new Date(dateFrom);
+      prevDate.setDate(prevDate.getDate() - 1);
+      const prevTo = prevDate.toISOString().slice(0, 10);
+      const results = await Promise.all([
+        pubDb.from('donors').select('amount').lte('donation_date', prevTo),
+        pubDb.from('expenses').select('amount').lte('expense_date', prevTo),
+      ]);
+      const pd = results[0];
+      const pe = results[1];
+      const prevDonors = (pd.data || []).reduce(function(s, d) { return s + Number(d.amount || 0); }, 0);
+      const prevExp = (pe.data || []).reduce(function(s, e) { return s + Number(e.amount || 0); }, 0);
+      prevBalance = prevDonors - prevExp;
+    }
+
+    const all = await Promise.all([catQ, donorQ, expenseQ]);
+    const catRes = all[0];
+    const donorRes = all[1];
+    const expenseRes = all[2];
+    if (catRes.error) throw catRes.error;
+    if (donorRes.error) throw donorRes.error;
+    if (expenseRes.error) throw expenseRes.error;
+
+    state.categories = catRes.data || [];
+    state.donors = donorRes.data || [];
+    state.expenses = expenseRes.data || [];
+    state.prevBalance = prevBalance;
+
+    renderCards();
+    renderDonors();
+    renderExpenses();
+  } catch (err) {
+    showToast((err && err.message) || 'Gagal memuat laporan.', true);
   }
 }
 
-function renderReportFunds(total, target, used) {
-  const values = [
-    ['Dana Masuk', formatRupiah(total), 'fund-primary'],
-    ['Dana Terpakai', formatRupiah(used), 'fund-warning'],
-    ['Saldo', formatRupiah(Math.max(total - used, 0)), 'fund-success'],
-    ['Target', formatRupiah(target), 'fund-primary'],
-  ];
-  document.getElementById('laporan-fund-grid').innerHTML = values.map(([label, value, tone]) => `
-    <div class="fund-card ${tone}"><span>${escHtml(label)}</span><strong>${escHtml(value)}</strong></div>
-  `).join('');
-}
-
-function renderReportBreakdown(breakdown, subItems) {
-  const byParent = makeByParent(subItems);
-  const wrap = document.getElementById('laporan-breakdown');
-  wrap.innerHTML = breakdown.map(item => {
-    const subs = byParent[item.id] || [];
-    const nominal = subs.length > 0
-      ? subs.reduce((s, si) => s + Number(si.amount || 0), 0)
-      : Number(item.amount || 0);
-    return `
-    <div class="fund-breakdown-row">
-      <span>${escHtml(item.label)}</span>
-      <strong>${formatRupiah(nominal)}</strong>
-    </div>`;
-  }).join('') || '<p class="transparency-note">Rincian RAB belum tersedia.</p>';
-}
-
-function renderReportDonors(donors) {
-  document.getElementById('laporan-table-body').innerHTML = donors.map(item => `
-    <tr>
-      <td>${escHtml(item.is_anonymous ? 'Hamba Allah' : item.name)}</td>
-      <td>${escHtml(formatRupiah(item.amount))}</td>
-      <td>${escHtml(item.donation_date || '-')}</td>
-    </tr>
-  `).join('') || '<tr><td colspan="3" class="admin-empty">Belum ada data donatur.</td></tr>';
-}
-
-function renderMonthlyChart(donors) {
-  const canvas = document.getElementById('monthly-chart');
-  const ctx = canvas.getContext('2d');
-  const monthly = new Map();
-  donors.forEach(item => {
-    const key = String(item.donation_date || '').slice(0, 7) || 'Tanpa tanggal';
-    monthly.set(key, (monthly.get(key) || 0) + Number(item.amount || 0));
-  });
-  const rows = [...monthly.entries()].sort();
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#1e293b';
-  ctx.font = '18px Inter, sans-serif';
-  if (rows.length === 0) {
-    ctx.fillText('Belum ada data donasi bulanan.', 24, 48);
-    return;
+function periodLabel() {
+  const f = state.filter;
+  if (f.mode === 'all') return 'Menampilkan: Semua waktu';
+  if (f.mode === 'month' && f.yearMonth) {
+    const d = new Date(f.yearMonth + '-02');
+    return 'Menampilkan: ' + d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
   }
-  const max = Math.max(...rows.map(([, value]) => value), 1);
-  const barWidth = Math.max(36, (canvas.width - 80) / rows.length - 14);
-  rows.forEach(([label, value], index) => {
-    const height = Math.round((value / max) * 220);
-    const x = 42 + index * (barWidth + 14);
-    const y = 260 - height;
-    ctx.fillStyle = '#2563eb';
-    ctx.fillRect(x, y, barWidth, height);
-    ctx.fillStyle = '#475569';
-    ctx.font = '13px Inter, sans-serif';
-    ctx.fillText(label, x, 288);
+  if (f.mode === 'custom') return 'Menampilkan: ' + formatDate(f.dateFrom) + ' - ' + formatDate(f.dateTo);
+  return 'Memuat laporan...';
+}
+
+function renderCards() {
+  const masuk = state.donors.reduce(function(s, d) { return s + Number(d.amount || 0); }, 0);
+  const keluar = state.expenses.reduce(function(s, e) { return s + Number(e.amount || 0); }, 0);
+  const prev = state.prevBalance;
+  const saldo = prev + masuk - keluar;
+
+  const formulaHtml =
+    '<div class="admin-finance-formula">' +
+      '<div class="admin-finance-formula-item">' +
+        '<strong>' + escHtml(formatRupiah(prev)) + '</strong>' +
+        '<span>Sisa Bulan Lalu</span>' +
+      '</div>' +
+      '<span class="admin-finance-op">+</span>' +
+      '<div class="admin-finance-formula-item">' +
+        '<strong>' + escHtml(formatRupiah(masuk)) + '</strong>' +
+        '<span>Total Pemasukan</span>' +
+      '</div>' +
+      '<span class="admin-finance-op">&minus;</span>' +
+      '<div class="admin-finance-formula-item">' +
+        '<strong>' + escHtml(formatRupiah(keluar)) + '</strong>' +
+        '<span>Total Pengeluaran</span>' +
+      '</div>' +
+      '<span class="admin-finance-op admin-finance-eq">=</span>' +
+      '<div class="admin-finance-formula-item admin-finance-result">' +
+        '<strong>' + escHtml(formatRupiah(saldo)) + '</strong>' +
+        '<span>Saldo Akhir</span>' +
+      '</div>' +
+    '</div>';
+
+  const summaryHtml =
+    '<div class="admin-finance-summary">' +
+      '<div class="admin-finance-card finance-prev">' +
+        '<span>Sisa Bulan Lalu</span>' +
+        '<strong>' + escHtml(formatRupiah(prev)) + '</strong>' +
+      '</div>' +
+      '<div class="admin-finance-card finance-in">' +
+        '<span>Total Pemasukan</span>' +
+        '<strong>' + escHtml(formatRupiah(masuk)) + '</strong>' +
+        '<small>' + state.donors.length + ' donasi</small>' +
+      '</div>' +
+      '<div class="admin-finance-card finance-out">' +
+        '<span>Total Pengeluaran</span>' +
+        '<strong>' + escHtml(formatRupiah(keluar)) + '</strong>' +
+        '<small>' + state.expenses.length + ' transaksi</small>' +
+      '</div>' +
+      '<div class="admin-finance-card finance-end">' +
+        '<span>Saldo Akhir Periode</span>' +
+        '<strong>' + escHtml(formatRupiah(saldo)) + '</strong>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('pub-cards').innerHTML = formulaHtml + summaryHtml;
+}
+
+function renderDonors() {
+  const donors = state.donors;
+  const total = donors.reduce(function(s, d) { return s + Number(d.amount || 0); }, 0);
+  document.getElementById('pub-donors-count').textContent = donors.length + ' donasi';
+
+  var rows = donors.map(function(d) {
+    return '<tr>' +
+      '<td>' + escHtml(formatDate(d.donation_date)) + '</td>' +
+      '<td>' + escHtml(d.is_anonymous ? 'Hamba Allah' : d.name) + '</td>' +
+      '<td>' + escHtml(d.notes || '-') + '</td>' +
+      '<td class="finance-amount-in">' + escHtml(formatRupiah(d.amount)) + '</td>' +
+      '</tr>';
+  }).join('');
+
+  var totalRow = '<tr class="admin-table-total">' +
+    '<td colspan="3">Total Pemasukan</td>' +
+    '<td class="finance-amount-in">' + escHtml(formatRupiah(total)) + '</td>' +
+    '</tr>';
+
+  document.getElementById('pub-donors-body').innerHTML = rows
+    ? rows + totalRow
+    : '<tr><td colspan="4" class="admin-empty">Tidak ada pemasukan pada periode ini.</td></tr>';
+}
+
+function renderExpenses() {
+  const expenses = state.expenses;
+  const total = expenses.reduce(function(s, e) { return s + Number(e.amount || 0); }, 0);
+  document.getElementById('pub-expenses-count').textContent = expenses.length + ' transaksi';
+
+  var rows = expenses.map(function(e) {
+    const cat = e.expense_categories;
+    const isRab = cat && cat.breakdown_id;
+    const badge = cat
+      ? '<span class="admin-cat-badge ' + (isRab ? 'rab' : 'custom') + '">' + escHtml(cat.name) + '</span>'
+      : '-';
+    return '<tr>' +
+      '<td>' + escHtml(formatDate(e.expense_date)) + '</td>' +
+      '<td>' + badge + '</td>' +
+      '<td>' + escHtml(e.description) + '</td>' +
+      '<td class="finance-amount-out">' + escHtml(formatRupiah(e.amount)) + '</td>' +
+      '</tr>';
+  }).join('');
+
+  var totalRow = '<tr class="admin-table-total">' +
+    '<td colspan="3">Total Pengeluaran</td>' +
+    '<td class="finance-amount-out">' + escHtml(formatRupiah(total)) + '</td>' +
+    '</tr>';
+
+  document.getElementById('pub-expenses-body').innerHTML = rows
+    ? rows + totalRow
+    : '<tr><td colspan="4" class="admin-empty">Tidak ada pengeluaran pada periode ini.</td></tr>';
+}
+
+function formatDate(date) {
+  if (!date) return '-';
+  return new Date(date + 'T12:00:00').toLocaleDateString('id-ID', {
+    day: 'numeric', month: 'short', year: 'numeric',
   });
 }
