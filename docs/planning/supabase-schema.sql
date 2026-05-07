@@ -578,3 +578,67 @@ create policy "Authenticated admins can manage breakdown items"
         and is_active = true
     )
   );
+
+-- === MIGRATION: Laporan Keuangan (2026-05-07) ===
+
+create table if not exists public.expense_categories (
+  id           uuid primary key default gen_random_uuid(),
+  name         text not null,
+  breakdown_id uuid references public.fund_breakdown(id) on delete set null,
+  sort_order   integer not null default 0,
+  is_active    boolean not null default true,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+create table if not exists public.expenses (
+  id           uuid primary key default gen_random_uuid(),
+  category_id  uuid not null references public.expense_categories(id) on delete restrict,
+  description  text not null,
+  amount       integer not null check (amount > 0),
+  expense_date date not null,
+  notes        text not null default '',
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+alter table public.expense_categories enable row level security;
+alter table public.expenses enable row level security;
+
+drop policy if exists "Public can read active expense categories" on public.expense_categories;
+create policy "Public can read active expense categories"
+on public.expense_categories for select
+to anon, authenticated
+using (is_active = true);
+
+drop policy if exists "Authenticated admins can manage expense categories" on public.expense_categories;
+create policy "Authenticated admins can manage expense categories"
+on public.expense_categories for all
+to authenticated
+using (
+  exists (select 1 from public.admin_users where user_id = (select auth.uid()) and is_active = true)
+)
+with check (
+  exists (select 1 from public.admin_users where user_id = (select auth.uid()) and is_active = true)
+);
+
+drop policy if exists "Authenticated admins can manage expenses" on public.expenses;
+create policy "Authenticated admins can manage expenses"
+on public.expenses for all
+to authenticated
+using (
+  exists (select 1 from public.admin_users where user_id = (select auth.uid()) and is_active = true)
+)
+with check (
+  exists (select 1 from public.admin_users where user_id = (select auth.uid()) and is_active = true)
+);
+
+drop trigger if exists expense_categories_updated_at on public.expense_categories;
+create trigger expense_categories_updated_at
+before update on public.expense_categories
+for each row execute function public.set_updated_at();
+
+drop trigger if exists expenses_updated_at on public.expenses;
+create trigger expenses_updated_at
+before update on public.expenses
+for each row execute function public.set_updated_at();
