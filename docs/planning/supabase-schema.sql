@@ -633,6 +633,13 @@ with check (
   exists (select 1 from public.admin_users where user_id = (select auth.uid()) and is_active = true)
 );
 
+drop policy if exists "Public can select expenses" on public.expenses;
+create policy "Public can select expenses"
+  on public.expenses
+  for select
+  to anon, authenticated
+  using (true);
+
 drop trigger if exists expense_categories_updated_at on public.expense_categories;
 create trigger expense_categories_updated_at
 before update on public.expense_categories
