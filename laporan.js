@@ -2,7 +2,6 @@
 
 const state = {
   filter: { mode: 'month', yearMonth: '', dateFrom: null, dateTo: null },
-  categories: [],
   donors: [],
   expenses: [],
   prevBalance: 0,
@@ -16,13 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initMonthSelect() {
   const now = new Date();
-  const ym = now.toISOString().slice(0, 7);
+  const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
   state.filter.yearMonth = ym;
   const select = document.getElementById('pub-month-select');
   const options = [];
   for (let i = 0; i < 24; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const val = d.toISOString().slice(0, 7);
+    const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
     const sel = val === ym ? 'selected' : '';
     options.push('<option value="' + escAttr(val) + '" ' + sel + '>' + escHtml(label) + '</option>');
@@ -53,6 +52,7 @@ function bindEvents() {
 }
 
 async function loadAndRender() {
+  if (!pubDb) { showToast('Konfigurasi Supabase belum diisi.', true); return; }
   document.getElementById('pub-period-label').textContent = periodLabel();
   try {
     const f = state.filter;
@@ -71,7 +71,6 @@ async function loadAndRender() {
       dateTo = f.dateTo;
     }
 
-    let catQ = pubDb.from('expense_categories').select('id, name, breakdown_id').eq('is_active', true);
     let donorQ = pubDb.from('donors').select('*').order('donation_date', { ascending: false });
     let expenseQ = pubDb
       .from('expenses')
@@ -89,29 +88,28 @@ async function loadAndRender() {
 
     let prevBalance = 0;
     if (f.mode !== 'all' && dateFrom) {
-      const prevDate = new Date(dateFrom);
-      prevDate.setDate(prevDate.getDate() - 1);
-      const prevTo = prevDate.toISOString().slice(0, 10);
+      const [py, pm, pd] = dateFrom.split('-').map(Number);
+      const prevLocal = new Date(py, pm - 1, pd - 1);
+      const prevTo = prevLocal.getFullYear() + '-'
+        + String(prevLocal.getMonth() + 1).padStart(2, '0') + '-'
+        + String(prevLocal.getDate()).padStart(2, '0');
       const results = await Promise.all([
         pubDb.from('donors').select('amount').lte('donation_date', prevTo),
         pubDb.from('expenses').select('amount').lte('expense_date', prevTo),
       ]);
-      const pd = results[0];
-      const pe = results[1];
-      const prevDonors = (pd.data || []).reduce(function(s, d) { return s + Number(d.amount || 0); }, 0);
-      const prevExp = (pe.data || []).reduce(function(s, e) { return s + Number(e.amount || 0); }, 0);
+      const prevDonorRes = results[0];
+      const prevExpRes = results[1];
+      const prevDonors = (prevDonorRes.data || []).reduce(function(s, d) { return s + Number(d.amount || 0); }, 0);
+      const prevExp = (prevExpRes.data || []).reduce(function(s, e) { return s + Number(e.amount || 0); }, 0);
       prevBalance = prevDonors - prevExp;
     }
 
-    const all = await Promise.all([catQ, donorQ, expenseQ]);
-    const catRes = all[0];
-    const donorRes = all[1];
-    const expenseRes = all[2];
-    if (catRes.error) throw catRes.error;
+    const all = await Promise.all([donorQ, expenseQ]);
+    const donorRes = all[0];
+    const expenseRes = all[1];
     if (donorRes.error) throw donorRes.error;
     if (expenseRes.error) throw expenseRes.error;
 
-    state.categories = catRes.data || [];
     state.donors = donorRes.data || [];
     state.expenses = expenseRes.data || [];
     state.prevBalance = prevBalance;
@@ -141,11 +139,12 @@ function renderCards() {
   const prev = state.prevBalance;
   const saldo = prev + masuk - keluar;
 
+  const prevLabel = state.filter.mode === 'all' ? 'Saldo Awal' : 'Sisa Bulan Lalu';
   const formulaHtml =
     '<div class="admin-finance-formula">' +
       '<div class="admin-finance-formula-item">' +
         '<strong>' + escHtml(formatRupiah(prev)) + '</strong>' +
-        '<span>Sisa Bulan Lalu</span>' +
+        '<span>' + escHtml(prevLabel) + '</span>' +
       '</div>' +
       '<span class="admin-finance-op">+</span>' +
       '<div class="admin-finance-formula-item">' +
@@ -167,7 +166,7 @@ function renderCards() {
   const summaryHtml =
     '<div class="admin-finance-summary">' +
       '<div class="admin-finance-card finance-prev">' +
-        '<span>Sisa Bulan Lalu</span>' +
+        '<span>' + escHtml(prevLabel) + '</span>' +
         '<strong>' + escHtml(formatRupiah(prev)) + '</strong>' +
       '</div>' +
       '<div class="admin-finance-card finance-in">' +
@@ -194,7 +193,7 @@ function renderDonors() {
   const total = donors.reduce(function(s, d) { return s + Number(d.amount || 0); }, 0);
   document.getElementById('pub-donors-count').textContent = donors.length + ' donasi';
 
-  var rows = donors.map(function(d) {
+  const rows = donors.map(function(d) {
     return '<tr>' +
       '<td>' + escHtml(formatDate(d.donation_date)) + '</td>' +
       '<td>' + escHtml(d.is_anonymous ? 'Hamba Allah' : d.name) + '</td>' +
@@ -203,7 +202,7 @@ function renderDonors() {
       '</tr>';
   }).join('');
 
-  var totalRow = '<tr class="admin-table-total">' +
+  const totalRow = '<tr class="admin-table-total">' +
     '<td colspan="3">Total Pemasukan</td>' +
     '<td class="finance-amount-in">' + escHtml(formatRupiah(total)) + '</td>' +
     '</tr>';
@@ -218,7 +217,7 @@ function renderExpenses() {
   const total = expenses.reduce(function(s, e) { return s + Number(e.amount || 0); }, 0);
   document.getElementById('pub-expenses-count').textContent = expenses.length + ' transaksi';
 
-  var rows = expenses.map(function(e) {
+  const rows = expenses.map(function(e) {
     const cat = e.expense_categories;
     const isRab = cat && cat.breakdown_id;
     const badge = cat
@@ -232,7 +231,7 @@ function renderExpenses() {
       '</tr>';
   }).join('');
 
-  var totalRow = '<tr class="admin-table-total">' +
+  const totalRow = '<tr class="admin-table-total">' +
     '<td colspan="3">Total Pengeluaran</td>' +
     '<td class="finance-amount-out">' + escHtml(formatRupiah(total)) + '</td>' +
     '</tr>';
