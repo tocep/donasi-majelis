@@ -780,6 +780,29 @@ function modalFieldsHtml(type, item) {
       ${field('Urutan', 'sort_order', 'number', item?.sort_order || 0, true)}
     `;
   }
+  if (type === 'expense') {
+    const rabCats = state.finance.categories.filter(c => c.breakdown_id);
+    const customCats = state.finance.categories.filter(c => !c.breakdown_id);
+    const rabOptions = rabCats.map(c =>
+      `<option value="${escAttr(c.id)}" ${item?.category_id === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`
+    ).join('');
+    const customOptions = customCats.map(c =>
+      `<option value="${escAttr(c.id)}" ${item?.category_id === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`
+    ).join('');
+    return `
+      ${field('Tanggal Pengeluaran', 'expense_date', 'date', item?.expense_date || today(), true)}
+      ${field('Nominal (Rp)', 'amount', 'number', item?.amount || '', true, '1000')}
+      <label>Kategori
+        <select name="category_id" required>
+          <option value="" disabled ${!item ? 'selected' : ''}>— Pilih Kategori —</option>
+          ${rabOptions ? `<optgroup label="Dari Pos RAB">${rabOptions}</optgroup>` : ''}
+          ${customOptions ? `<optgroup label="Kategori Kustom">${customOptions}</optgroup>` : ''}
+        </select>
+      </label>
+      ${field('Keterangan', 'description', 'text', item?.description || '', true)}
+      <label>Catatan<textarea name="notes" rows="3">${escHtml(item?.notes || '')}</textarea></label>
+    `;
+  }
   return '';
 }
 
@@ -813,8 +836,13 @@ async function handleModalSave(event) {
     if (result.error) throw result.error;
     await logAdminAction(state.editingId ? 'update' : 'insert', table, state.editingId, payload);
     closeModal();
-    await loadAdminData();
-    renderAdmin();
+    if (type === 'expense') {
+      state.finance.loaded = false;
+      await loadAndRenderFinance();
+    } else {
+      await loadAdminData();
+      renderAdmin();
+    }
     showToast('Data berhasil disimpan.');
   } catch (error) {
     showToast(error.message || 'Gagal menyimpan data.', true);
@@ -884,6 +912,15 @@ function buildPayload(type, form) {
       sort_order: Number(form.get('sort_order') || 0),
     };
   }
+  if (type === 'expense') {
+    return {
+      category_id: clean(form.get('category_id')),
+      expense_date: clean(form.get('expense_date')),
+      amount: Number(form.get('amount')),
+      description: clean(form.get('description')),
+      notes: clean(form.get('notes')),
+    };
+  }
   return {};
 }
 
@@ -911,6 +948,9 @@ function validatePayload(type, payload) {
   }
   if (type === 'gallery' && !payload.caption) {
     return 'Caption foto wajib diisi.';
+  }
+  if (type === 'expense' && (!payload.category_id || !payload.expense_date || payload.amount <= 0 || !payload.description)) {
+    return 'Tanggal, nominal positif, kategori, dan keterangan pengeluaran wajib diisi.';
   }
   return '';
 }
@@ -984,8 +1024,13 @@ async function deleteItem(type, id) {
     return;
   }
   await logAdminAction('delete', tableName(type), id, null);
-  await loadAdminData();
-  renderAdmin();
+  if (type === 'expense') {
+    state.finance.loaded = false;
+    await loadAndRenderFinance();
+  } else {
+    await loadAdminData();
+    renderAdmin();
+  }
   showToast('Data berhasil dihapus.');
 }
 
