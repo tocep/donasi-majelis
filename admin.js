@@ -290,6 +290,7 @@ async function loadAdminData() {
   );
   state.accounts.list = accountsRes.data || [];
   state.accounts.loaded = false;
+  state.accounts.error = '';
   state.updates = [];
   state.updatesError = '';
   state.updatesLoaded = false;
@@ -591,9 +592,15 @@ async function deactivateAccount(id) {
   const accRes = await adminDb.from('accounts').select('*').order('sort_order', { ascending: true });
   if (!accRes.error) state.accounts.list = accRes.data || [];
   state.accounts.loaded = false;
-  await loadAccountsData();
-  renderAccounts();
-  showToast('Rekening berhasil dinonaktifkan.');
+  try {
+    await loadAccountsData();
+    renderAccounts();
+    showToast('Rekening berhasil dinonaktifkan.');
+  } catch (error) {
+    state.accounts.error = error.message || 'Gagal memuat ulang data rekening.';
+    renderAccounts();
+    showToast(state.accounts.error, true);
+  }
 }
 
 function renderAdmin() {
@@ -1146,9 +1153,14 @@ async function handleModalSave(event) {
       state.accounts.loaded = false;
       await loadAndRenderFinance();
     } else {
+      const accountsWereLoaded = state.accounts.loaded;
       state.accounts.loaded = false;
       await loadAdminData();
       renderAdmin();
+      if (accountsWereLoaded) {
+        await loadAccountsData();
+        renderAccounts();
+      }
     }
     showToast('Data berhasil disimpan.');
   } catch (error) {
@@ -1369,13 +1381,20 @@ async function deleteItem(type, id) {
     state.accounts.loaded = false;
     await loadAndRenderFinance();
   } else if (type === 'transfer') {
+    const accRes = await adminDb.from('accounts').select('*').order('sort_order', { ascending: true });
+    if (!accRes.error) state.accounts.list = accRes.data || [];
     state.accounts.loaded = false;
     await loadAccountsData();
     renderAccounts();
   } else {
+    const accountsWereLoaded = state.accounts.loaded;
     state.accounts.loaded = false;
     await loadAdminData();
     renderAdmin();
+    if (accountsWereLoaded) {
+      await loadAccountsData();
+      renderAccounts();
+    }
   }
   showToast('Data berhasil dihapus.');
 }
