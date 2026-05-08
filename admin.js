@@ -962,13 +962,20 @@ function closeModal() {
 
 function modalFieldsHtml(type, item) {
   if (type === 'donor') {
-    return `
-      ${field('Nama Donatur', 'name', 'text', item?.name || 'Hamba Allah', true)}
-      ${field('Nominal', 'amount', 'number', item?.amount || '', true, '1000')}
-      ${field('Tanggal', 'donation_date', 'date', item?.donation_date || today(), true)}
-      <label class="admin-check"><input type="checkbox" name="is_anonymous" ${item?.is_anonymous ? 'checked' : ''} /> Tampilkan sebagai Hamba Allah</label>
-      <label>Catatan<textarea name="notes" rows="3">${escHtml(item?.notes || '')}</textarea></label>
-    `;
+    const donorAccOpts = state.accounts.list
+      .filter(a => a.is_active)
+      .map(a => '<option value="' + escAttr(a.id) + '" '
+        + (item?.account_id === a.id ? 'selected' : '') + '>'
+        + escHtml(a.name) + '</option>')
+      .join('');
+    return field('Nama Donatur', 'name', 'text', item?.name || 'Hamba Allah', true)
+      + field('Nominal', 'amount', 'number', item?.amount || '', true, '1000')
+      + field('Tanggal', 'donation_date', 'date', item?.donation_date || today(), true)
+      + '<label class="admin-check"><input type="checkbox" name="is_anonymous" '
+      + (item?.is_anonymous ? 'checked' : '') + ' /> Tampilkan sebagai Hamba Allah</label>'
+      + '<label>Catatan<textarea name="notes" rows="3">' + escHtml(item?.notes || '') + '</textarea></label>'
+      + '<label>Masuk ke Rekening<select name="account_id" ' + (!item ? 'required' : '') + '>'
+      + '<option value="">-- Belum Ditentukan --</option>' + donorAccOpts + '</select></label>';
   }
   if (type === 'payment') {
     return `
@@ -1042,19 +1049,23 @@ function modalFieldsHtml(type, item) {
     const customOptions = customCats.map(c =>
       `<option value="${escAttr(c.id)}" ${item?.category_id === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`
     ).join('');
-    return `
-      ${field('Tanggal Pengeluaran', 'expense_date', 'date', item?.expense_date || today(), true)}
-      ${field('Nominal (Rp)', 'amount', 'number', item?.amount || '', true, '1000')}
-      <label>Kategori
-        <select name="category_id" required>
-          <option value="" disabled ${!item ? 'selected' : ''}>— Pilih Kategori —</option>
-          ${rabOptions ? `<optgroup label="Dari Pos RAB">${rabOptions}</optgroup>` : ''}
-          ${customOptions ? `<optgroup label="Kategori Kustom">${customOptions}</optgroup>` : ''}
-        </select>
-      </label>
-      ${field('Keterangan', 'description', 'text', item?.description || '', true)}
-      <label>Catatan<textarea name="notes" rows="3">${escHtml(item?.notes || '')}</textarea></label>
-    `;
+    const expAccOpts = state.accounts.list
+      .filter(a => a.is_active)
+      .map(a => '<option value="' + escAttr(a.id) + '" '
+        + (item?.account_id === a.id ? 'selected' : '') + '>'
+        + escHtml(a.name) + '</option>')
+      .join('');
+    return field('Tanggal Pengeluaran', 'expense_date', 'date', item?.expense_date || today(), true)
+      + field('Nominal (Rp)', 'amount', 'number', item?.amount || '', true, '1000')
+      + '<label>Kategori<select name="category_id" required>'
+      + '<option value="" disabled ' + (!item ? 'selected' : '') + '>— Pilih Kategori —</option>'
+      + (rabOptions ? '<optgroup label="Dari Pos RAB">' + rabOptions + '</optgroup>' : '')
+      + (customOptions ? '<optgroup label="Kategori Kustom">' + customOptions + '</optgroup>' : '')
+      + '</select></label>'
+      + field('Keterangan', 'description', 'text', item?.description || '', true)
+      + '<label>Catatan<textarea name="notes" rows="3">' + escHtml(item?.notes || '') + '</textarea></label>'
+      + '<label>Keluar dari Rekening<select name="account_id" ' + (!item ? 'required' : '') + '>'
+      + '<option value="">-- Belum Ditentukan --</option>' + expAccOpts + '</select></label>';
   }
   if (type === 'transfer') {
     const activeAccounts = state.accounts.list.filter(a => a.is_active);
@@ -1153,6 +1164,7 @@ function buildPayload(type, form) {
       donation_date: clean(form.get('donation_date')),
       is_anonymous: form.get('is_anonymous') === 'on',
       notes: clean(form.get('notes')),
+      account_id: clean(form.get('account_id')) || null,
     };
   }
   if (type === 'payment') {
@@ -1215,6 +1227,7 @@ function buildPayload(type, form) {
       amount: Number(form.get('amount')),
       description: clean(form.get('description')),
       notes: clean(form.get('notes')),
+      account_id: clean(form.get('account_id')) || null,
     };
   }
   if (type === 'transfer') {
