@@ -52,6 +52,7 @@
         <button type="button" class="admin-tab" data-admin-tab="report">Laporan Dana</button>
         <button type="button" class="admin-tab" data-admin-tab="breakdown">RAB</button>
         <button type="button" class="admin-tab" data-admin-tab="finance">Lap. Keuangan</button>
+        <button type="button" class="admin-tab" data-admin-tab="accounts">Rekening</button>
         <button type="button" class="admin-tab" data-admin-tab="payments">Metode Donasi</button>
         <button type="button" class="admin-tab" data-admin-tab="contacts">Kontak</button>
         <button type="button" class="admin-tab" data-admin-tab="updates">Update Pembangunan</button>
@@ -218,6 +219,33 @@
     </div>
   </div>
 
+</section>
+
+      <section class="admin-panel" id="panel-accounts">
+  <div class="admin-card">
+    <div class="admin-card-head">
+      <h2>Rekening &amp; Kas</h2>
+      <div class="admin-card-actions">
+        <button type="button" class="admin-btn admin-btn-light" id="accounts-migrate-btn">Lengkapi Data</button>
+        <button type="button" class="admin-btn admin-btn-light" id="accounts-transfer-btn">Catat Transfer</button>
+        <button type="button" class="admin-btn admin-btn-primary" data-open-form="account">Tambah Rekening</button>
+      </div>
+    </div>
+  </div>
+  <div id="accounts-cards-wrap"></div>
+  <div class="admin-card">
+    <div class="admin-card-head">
+      <h2>Riwayat Transfer</h2>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Tanggal</th><th>Dari</th><th>Ke</th><th>Nominal</th><th>Catatan</th><th>Aksi</th></tr>
+        </thead>
+        <tbody id="accounts-transfers-body"></tbody>
+      </table>
+    </div>
+  </div>
 </section>
 
       <section class="admin-panel" id="panel-payments">
