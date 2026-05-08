@@ -649,3 +649,63 @@ drop trigger if exists expenses_updated_at on public.expenses;
 create trigger expenses_updated_at
 before update on public.expenses
 for each row execute function public.set_updated_at();
+
+-- === MIGRATION: Rekening & Kas (2026-05-08) ===
+
+create table if not exists public.accounts (
+  id             uuid primary key default gen_random_uuid(),
+  name           text not null,
+  type           text not null check (type in ('bank', 'ewallet', 'cash')),
+  account_number text not null default '',
+  account_holder text not null default '',
+  notes          text not null default '',
+  is_active      boolean not null default true,
+  sort_order     integer not null default 0,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
+);
+
+create table if not exists public.account_transfers (
+  id              uuid primary key default gen_random_uuid(),
+  from_account_id uuid not null references public.accounts(id),
+  to_account_id   uuid not null references public.accounts(id),
+  amount          numeric not null check (amount > 0),
+  transfer_date   date not null,
+  notes           text not null default '',
+  created_at      timestamptz not null default now(),
+  check (from_account_id != to_account_id)
+);
+
+alter table public.donors
+  add column if not exists account_id uuid references public.accounts(id);
+
+alter table public.expenses
+  add column if not exists account_id uuid references public.accounts(id);
+
+alter table public.accounts enable row level security;
+alter table public.account_transfers enable row level security;
+
+drop policy if exists "Authenticated admins can manage accounts" on public.accounts;
+create policy "Authenticated admins can manage accounts"
+  on public.accounts for all to authenticated
+  using (
+    exists (select 1 from public.admin_users where user_id = (select auth.uid()) and is_active = true)
+  )
+  with check (
+    exists (select 1 from public.admin_users where user_id = (select auth.uid()) and is_active = true)
+  );
+
+drop policy if exists "Authenticated admins can manage account_transfers" on public.account_transfers;
+create policy "Authenticated admins can manage account_transfers"
+  on public.account_transfers for all to authenticated
+  using (
+    exists (select 1 from public.admin_users where user_id = (select auth.uid()) and is_active = true)
+  )
+  with check (
+    exists (select 1 from public.admin_users where user_id = (select auth.uid()) and is_active = true)
+  );
+
+drop trigger if exists accounts_updated_at on public.accounts;
+create trigger accounts_updated_at
+  before update on public.accounts
+  for each row execute function public.set_updated_at();
