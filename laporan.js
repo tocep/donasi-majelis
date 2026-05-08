@@ -71,10 +71,10 @@ async function loadAndRender() {
       dateTo = f.dateTo;
     }
 
-    let donorQ = pubDb.from('donors').select('donation_date, name, is_anonymous, notes, amount').order('donation_date', { ascending: false });
+    let donorQ = pubDb.from('donors').select('donation_date, name, is_anonymous, notes, amount, accounts(name)').order('donation_date', { ascending: false });
     let expenseQ = pubDb
       .from('expenses')
-      .select('id, description, amount, expense_date, expense_categories(id, name, breakdown_id)')
+      .select('id, description, amount, expense_date, expense_categories(id, name, breakdown_id), accounts(name)')
       .order('expense_date', { ascending: false });
 
     if (dateFrom) {
@@ -198,18 +198,19 @@ function renderDonors() {
       '<td>' + escHtml(formatDate(d.donation_date)) + '</td>' +
       '<td>' + escHtml(d.is_anonymous ? 'Hamba Allah' : d.name) + '</td>' +
       '<td>' + escHtml(d.notes || '-') + '</td>' +
+      '<td>' + escHtml((d.accounts && d.accounts.name) || '—') + '</td>' +
       '<td class="finance-amount-in">' + escHtml(formatRupiah(d.amount)) + '</td>' +
       '</tr>';
   }).join('');
 
   const totalRow = '<tr class="admin-table-total">' +
-    '<td colspan="3">Total Pemasukan</td>' +
+    '<td colspan="4">Total Pemasukan</td>' +
     '<td class="finance-amount-in">' + escHtml(formatRupiah(total)) + '</td>' +
     '</tr>';
 
   document.getElementById('pub-donors-body').innerHTML = rows
     ? rows + totalRow
-    : '<tr><td colspan="4" class="admin-empty">Tidak ada pemasukan pada periode ini.</td></tr>';
+    : '<tr><td colspan="5" class="admin-empty">Tidak ada pemasukan pada periode ini.</td></tr>';
 }
 
 function renderExpenses() {
@@ -227,18 +228,19 @@ function renderExpenses() {
       '<td>' + escHtml(formatDate(e.expense_date)) + '</td>' +
       '<td>' + badge + '</td>' +
       '<td>' + escHtml(e.description) + '</td>' +
+      '<td>' + escHtml((e.accounts && e.accounts.name) || '—') + '</td>' +
       '<td class="finance-amount-out">' + escHtml(formatRupiah(e.amount)) + '</td>' +
       '</tr>';
   }).join('');
 
   const totalRow = '<tr class="admin-table-total">' +
-    '<td colspan="3">Total Pengeluaran</td>' +
+    '<td colspan="4">Total Pengeluaran</td>' +
     '<td class="finance-amount-out">' + escHtml(formatRupiah(total)) + '</td>' +
     '</tr>';
 
   document.getElementById('pub-expenses-body').innerHTML = rows
     ? rows + totalRow
-    : '<tr><td colspan="4" class="admin-empty">Tidak ada pengeluaran pada periode ini.</td></tr>';
+    : '<tr><td colspan="5" class="admin-empty">Tidak ada pengeluaran pada periode ini.</td></tr>';
 }
 
 function formatDate(date) {
