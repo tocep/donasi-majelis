@@ -1056,6 +1056,21 @@ function modalFieldsHtml(type, item) {
       <label>Catatan<textarea name="notes" rows="3">${escHtml(item?.notes || '')}</textarea></label>
     `;
   }
+  if (type === 'account') {
+    const typeOptions = [['bank', 'Bank'], ['ewallet', 'E-Wallet'], ['cash', 'Kas Tunai']]
+      .map(([val, lbl]) =>
+        '<option value="' + escAttr(val) + '" ' + (item?.type === val ? 'selected' : '') + '>'
+        + escHtml(lbl) + '</option>'
+      ).join('');
+    return field('Nama Rekening', 'name', 'text', item?.name || '', true)
+      + '<label>Tipe<select name="type" required>' + typeOptions + '</select></label>'
+      + field('Nomor Rekening', 'account_number', 'text', item?.account_number || '')
+      + field('Atas Nama', 'account_holder', 'text', item?.account_holder || '')
+      + field('Catatan', 'notes', 'text', item?.notes || '')
+      + field('Urutan', 'sort_order', 'number', item?.sort_order ?? 0, true)
+      + '<label class="admin-check"><input type="checkbox" name="is_active" '
+      + (item?.is_active !== false ? 'checked' : '') + ' /> Aktif</label>';
+  }
   return '';
 }
 
@@ -1190,6 +1205,17 @@ function buildPayload(type, form) {
       notes: clean(form.get('notes')),
     };
   }
+  if (type === 'account') {
+    return {
+      name: clean(form.get('name')),
+      type: clean(form.get('type')),
+      account_number: clean(form.get('account_number')),
+      account_holder: clean(form.get('account_holder')),
+      notes: clean(form.get('notes')),
+      sort_order: Number(form.get('sort_order') || 0),
+      is_active: form.get('is_active') === 'on',
+    };
+  }
   return {};
 }
 
@@ -1220,6 +1246,9 @@ function validatePayload(type, payload) {
   }
   if (type === 'expense' && (!payload.category_id || !payload.expense_date || payload.amount <= 0 || !payload.description)) {
     return 'Tanggal, nominal positif, kategori, dan keterangan pengeluaran wajib diisi.';
+  }
+  if (type === 'account' && (!payload.name || !payload.type)) {
+    return 'Nama dan tipe rekening wajib diisi.';
   }
   return '';
 }
