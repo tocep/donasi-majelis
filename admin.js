@@ -1056,6 +1056,18 @@ function modalFieldsHtml(type, item) {
       <label>Catatan<textarea name="notes" rows="3">${escHtml(item?.notes || '')}</textarea></label>
     `;
   }
+  if (type === 'transfer') {
+    const activeAccounts = state.accounts.list.filter(a => a.is_active);
+    const accountOptions = '<option value="" disabled selected>-- Pilih Rekening --</option>'
+      + activeAccounts.map(a =>
+          '<option value="' + escAttr(a.id) + '">' + escHtml(a.name) + '</option>'
+        ).join('');
+    return '<label>Dari Rekening<select name="from_account_id" required>' + accountOptions + '</select></label>'
+      + '<label>Ke Rekening<select name="to_account_id" required>' + accountOptions + '</select></label>'
+      + field('Nominal (Rp)', 'amount', 'number', '', true, '1000')
+      + field('Tanggal', 'transfer_date', 'date', today(), true)
+      + '<label>Catatan<textarea name="notes" rows="2"></textarea></label>';
+  }
   if (type === 'account') {
     const typeOptions = [['bank', 'Bank'], ['ewallet', 'E-Wallet'], ['cash', 'Kas Tunai']]
       .map(([val, lbl]) =>
@@ -1205,6 +1217,15 @@ function buildPayload(type, form) {
       notes: clean(form.get('notes')),
     };
   }
+  if (type === 'transfer') {
+    return {
+      from_account_id: clean(form.get('from_account_id')),
+      to_account_id: clean(form.get('to_account_id')),
+      amount: Number(form.get('amount')),
+      transfer_date: clean(form.get('transfer_date')),
+      notes: clean(form.get('notes')),
+    };
+  }
   if (type === 'account') {
     return {
       name: clean(form.get('name')),
@@ -1246,6 +1267,14 @@ function validatePayload(type, payload) {
   }
   if (type === 'expense' && (!payload.category_id || !payload.expense_date || payload.amount <= 0 || !payload.description)) {
     return 'Tanggal, nominal positif, kategori, dan keterangan pengeluaran wajib diisi.';
+  }
+  if (type === 'transfer') {
+    if (!payload.from_account_id || !payload.to_account_id || payload.amount <= 0 || !payload.transfer_date) {
+      return 'Dari rekening, ke rekening, nominal, dan tanggal wajib diisi.';
+    }
+    if (payload.from_account_id === payload.to_account_id) {
+      return 'Rekening asal dan tujuan tidak boleh sama.';
+    }
   }
   if (type === 'account' && (!payload.name || !payload.type)) {
     return 'Nama dan tipe rekening wajib diisi.';
