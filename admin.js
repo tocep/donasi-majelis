@@ -402,6 +402,200 @@ async function retryAccountsLoad() {
   }
 }
 
+function calcBalance(accountId) {
+  const income = state.accounts.allDonors
+    .filter(d => d.account_id === accountId)
+    .reduce((s, d) => s + Number(d.amount || 0), 0);
+  const outcome = state.accounts.allExpenses
+    .filter(e => e.account_id === accountId)
+    .reduce((s, e) => s + Number(e.amount || 0), 0);
+  const transferIn = state.accounts.transfers
+    .filter(t => t.to_account_id === accountId)
+    .reduce((s, t) => s + Number(t.amount || 0), 0);
+  const transferOut = state.accounts.transfers
+    .filter(t => t.from_account_id === accountId)
+    .reduce((s, t) => s + Number(t.amount || 0), 0);
+  return income - outcome + transferIn - transferOut;
+}
+
+function renderAccounts() {
+  const cardsWrap = document.getElementById('accounts-cards-wrap');
+  const transferBody = document.getElementById('accounts-transfers-body');
+  if (!state.accounts.loaded && !state.accounts.error) {
+    cardsWrap.textContent = '';
+    const p = document.createElement('p');
+    p.className = 'admin-muted';
+    p.textContent = 'Memuat rekening...';
+    cardsWrap.appendChild(p);
+    transferBody.replaceChildren();
+    return;
+  }
+  if (state.accounts.error) {
+    cardsWrap.textContent = '';
+    const div = document.createElement('div');
+    div.className = 'admin-warning';
+    const strong = document.createElement('strong');
+    strong.textContent = 'Data rekening belum dapat dimuat.';
+    const p = document.createElement('p');
+    p.className = 'admin-muted';
+    p.textContent = state.accounts.error;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'admin-btn admin-btn-light';
+    btn.textContent = 'Coba Muat Ulang';
+    btn.onclick = retryAccountsLoad;
+    div.appendChild(strong);
+    div.appendChild(p);
+    div.appendChild(btn);
+    cardsWrap.appendChild(div);
+    return;
+  }
+  renderAccountCards();
+  renderTransferTable();
+}
+
+function renderAccountCards() {
+  const cardsWrap = document.getElementById('accounts-cards-wrap');
+  cardsWrap.textContent = '';
+  const activeAccounts = state.accounts.list.filter(a => a.is_active);
+
+  activeAccounts.forEach(acc => {
+    const balance = calcBalance(acc.id);
+    const card = document.createElement('div');
+    card.className = 'admin-card admin-account-card';
+
+    const head = document.createElement('div');
+    head.className = 'admin-card-head';
+
+    const titleWrap = document.createElement('div');
+    const h3 = document.createElement('h3');
+    h3.textContent = acc.name;
+    const typeBadge = document.createElement('span');
+    typeBadge.className = 'admin-badge';
+    typeBadge.textContent = acc.type === 'bank' ? 'Bank' : acc.type === 'ewallet' ? 'E-Wallet' : 'Kas Tunai';
+    titleWrap.appendChild(h3);
+    titleWrap.appendChild(typeBadge);
+
+    const actions = document.createElement('div');
+    actions.className = 'admin-card-actions';
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'admin-btn admin-btn-light';
+    editBtn.textContent = 'Edit';
+    editBtn.onclick = () => openModal('account', acc.id);
+    const deactivateBtn = document.createElement('button');
+    deactivateBtn.type = 'button';
+    deactivateBtn.className = 'admin-btn admin-btn-light';
+    deactivateBtn.textContent = 'Nonaktifkan';
+    deactivateBtn.onclick = () => deactivateAccount(acc.id);
+    actions.appendChild(editBtn);
+    actions.appendChild(deactivateBtn);
+
+    head.appendChild(titleWrap);
+    head.appendChild(actions);
+
+    const balanceEl = document.createElement('p');
+    balanceEl.className = 'admin-account-balance';
+    balanceEl.textContent = formatRupiah(balance);
+
+    card.appendChild(head);
+    card.appendChild(balanceEl);
+    cardsWrap.appendChild(card);
+  });
+
+  const unassignedIncome = state.accounts.allDonors
+    .filter(d => !d.account_id)
+    .reduce((s, d) => s + Number(d.amount || 0), 0);
+  const unassignedExpense = state.accounts.allExpenses
+    .filter(e => !e.account_id)
+    .reduce((s, e) => s + Number(e.amount || 0), 0);
+
+  if (unassignedIncome > 0 || unassignedExpense > 0) {
+    const card = document.createElement('div');
+    card.className = 'admin-card admin-account-card admin-account-card--unassigned';
+
+    const head = document.createElement('div');
+    head.className = 'admin-card-head';
+    const h3 = document.createElement('h3');
+    h3.textContent = 'Belum Ditentukan';
+    const migrateBtn = document.createElement('button');
+    migrateBtn.type = 'button';
+    migrateBtn.className = 'admin-btn admin-btn-primary';
+    migrateBtn.textContent = 'Lengkapi Data';
+    migrateBtn.onclick = openMigrateModal;
+    head.appendChild(h3);
+    head.appendChild(migrateBtn);
+
+    const incomeEl = document.createElement('p');
+    incomeEl.className = 'admin-muted';
+    incomeEl.textContent = 'Pemasukan: ' + formatRupiah(unassignedIncome);
+    const expenseEl = document.createElement('p');
+    expenseEl.className = 'admin-muted';
+    expenseEl.textContent = 'Pengeluaran: ' + formatRupiah(unassignedExpense);
+
+    card.appendChild(head);
+    card.appendChild(incomeEl);
+    card.appendChild(expenseEl);
+    cardsWrap.appendChild(card);
+  }
+
+  if (!activeAccounts.length && !unassignedIncome && !unassignedExpense) {
+    const p = document.createElement('p');
+    p.className = 'admin-muted';
+    p.textContent = 'Belum ada rekening aktif. Klik "Tambah Rekening" untuk mulai.';
+    cardsWrap.appendChild(p);
+  }
+}
+
+function renderTransferTable() {
+  const transfers = state.accounts.transfers;
+  const accountMap = Object.fromEntries(state.accounts.list.map(a => [a.id, a.name]));
+  const tbody = document.getElementById('accounts-transfers-body');
+  tbody.replaceChildren();
+  if (!transfers.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 6;
+    td.className = 'admin-empty';
+    td.textContent = 'Belum ada transfer antar rekening.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    return;
+  }
+  transfers.forEach(t => {
+    const tr = document.createElement('tr');
+    [formatDate(t.transfer_date),
+     accountMap[t.from_account_id] || '?',
+     accountMap[t.to_account_id] || '?',
+     formatRupiah(t.amount),
+     t.notes || '—'].forEach(text => {
+      const td = document.createElement('td');
+      td.textContent = text;
+      tr.appendChild(td);
+    });
+    const actionTd = document.createElement('td');
+    actionTd.innerHTML = rowActions('transfer', t.id);
+    tr.appendChild(actionTd);
+    tbody.appendChild(tr);
+  });
+  bindRowActions();
+}
+
+async function deactivateAccount(id) {
+  const acc = state.accounts.list.find(a => String(a.id) === String(id));
+  if (!acc) return;
+  if (!confirm('Nonaktifkan rekening "' + acc.name + '"? Rekening tidak akan muncul di dropdown baru, tetapi riwayat transaksi tetap tersimpan.')) return;
+  const { error } = await adminDb.from('accounts').update({ is_active: false }).eq('id', id);
+  if (error) { showToast(error.message || 'Gagal menonaktifkan rekening.', true); return; }
+  await logAdminAction('deactivate', 'accounts', id, { is_active: false });
+  const accRes = await adminDb.from('accounts').select('*').order('sort_order', { ascending: true });
+  if (!accRes.error) state.accounts.list = accRes.data || [];
+  state.accounts.loaded = false;
+  await loadAccountsData();
+  renderAccounts();
+  showToast('Rekening berhasil dinonaktifkan.');
+}
+
 function renderAdmin() {
   renderSummary();
   renderReportForm();
