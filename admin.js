@@ -1955,6 +1955,128 @@ async function handleCategoryAdd(form) {
   showToast('Kategori berhasil ditambah.');
 }
 
+async function openMigrateModal() {
+  state.modalType = 'migrate-accounts';
+  state.editingId = null;
+  modalTitle.textContent = 'Lengkapi Data Rekening';
+  modalFields.textContent = '';
+  const loading = document.createElement('p');
+  loading.className = 'admin-muted';
+  loading.textContent = 'Memuat data...';
+  modalFields.appendChild(loading);
+  modal.showModal();
+  try {
+    const [donorsRes, expensesRes] = await Promise.all([
+      adminDb.from('donors')
+        .select('id, name, amount, donation_date, is_anonymous')
+        .is('account_id', null)
+        .order('donation_date', { ascending: false }),
+      adminDb.from('expenses')
+        .select('id, description, amount, expense_date')
+        .is('account_id', null)
+        .order('expense_date', { ascending: false }),
+    ]);
+    if (donorsRes.error) throw donorsRes.error;
+    if (expensesRes.error) throw expensesRes.error;
+    modalFields.innerHTML = migrateModalHtml(donorsRes.data || [], expensesRes.data || []);
+    bindMigrateTabEvents();
+  } catch (error) {
+    modalFields.textContent = '';
+    const p = document.createElement('p');
+    p.className = 'admin-muted';
+    p.textContent = 'Gagal memuat data: ' + error.message;
+    modalFields.appendChild(p);
+  }
+}
+
+function migrateModalHtml(donors, expenses) {
+  const accountOptions = state.accounts.list
+    .filter(a => a.is_active)
+    .map(a => '<option value="' + escAttr(a.id) + '">' + escHtml(a.name) + '</option>')
+    .join('');
+
+  function makeSelect(id, type) {
+    return '<select class="migrate-select" data-id="' + escAttr(id) + '" data-type="' + type + '">'
+      + '<option value="">-- Pilih --</option>' + accountOptions + '</select>';
+  }
+
+  const donorRows = donors.map(d =>
+    '<tr><td>' + escHtml(formatDate(d.donation_date)) + '</td>'
+    + '<td>' + escHtml(d.is_anonymous ? 'Hamba Allah' : d.name) + '</td>'
+    + '<td>' + escHtml(formatRupiah(d.amount)) + '</td>'
+    + '<td>' + makeSelect(d.id, 'donor') + '</td></tr>'
+  ).join('') || '<tr><td colspan="4" class="admin-empty">Semua pemasukan sudah memiliki rekening.</td></tr>';
+
+  const expenseRows = expenses.map(e =>
+    '<tr><td>' + escHtml(formatDate(e.expense_date)) + '</td>'
+    + '<td>' + escHtml(e.description) + '</td>'
+    + '<td>' + escHtml(formatRupiah(e.amount)) + '</td>'
+    + '<td>' + makeSelect(e.id, 'expense') + '</td></tr>'
+  ).join('') || '<tr><td colspan="4" class="admin-empty">Semua pengeluaran sudah memiliki rekening.</td></tr>';
+
+  return '<div style="margin-bottom:12px">'
+    + '<button type="button" class="admin-btn admin-btn-light migrate-tab-btn active" data-migrate-tab="pemasukan">Pemasukan (' + donors.length + ')</button>'
+    + ' <button type="button" class="admin-btn admin-btn-light migrate-tab-btn" data-migrate-tab="pengeluaran">Pengeluaran (' + expenses.length + ')</button>'
+    + '</div>'
+    + '<div id="migrate-tab-pemasukan"><div class="admin-table-wrap" style="max-height:320px;overflow-y:auto">'
+    + '<table class="admin-table"><thead><tr><th>Tanggal</th><th>Nama</th><th>Nominal</th><th>Rekening</th></tr></thead>'
+    + '<tbody>' + donorRows + '</tbody></table></div></div>'
+    + '<div id="migrate-tab-pengeluaran" hidden><div class="admin-table-wrap" style="max-height:320px;overflow-y:auto">'
+    + '<table class="admin-table"><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Nominal</th><th>Rekening</th></tr></thead>'
+    + '<tbody>' + expenseRows + '</tbody></table></div></div>'
+    + '<p class="admin-muted" style="margin-top:8px;font-size:12px">Pilih rekening untuk setiap baris, lalu klik Simpan.</p>';
+}
+
+function bindMigrateTabEvents() {
+  modalFields.querySelectorAll('.migrate-tab-btn').forEach(btn => {
+    btn.onclick = () => {
+      modalFields.querySelectorAll('.migrate-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const isPemasukan = btn.dataset.migrateTab === 'pemasukan';
+      document.getElementById('migrate-tab-pemasukan').hidden = !isPemasukan;
+      document.getElementById('migrate-tab-pengeluaran').hidden = isPemasukan;
+    };
+  });
+}
+
+async function saveMigrateData() {
+  const selects = modalFields.querySelectorAll('.migrate-select');
+  const donorUpdates = [];
+  const expenseUpdates = [];
+  selects.forEach(sel => {
+    if (!sel.value) return;
+    if (sel.dataset.type === 'donor') {
+      donorUpdates.push({ id: sel.dataset.id, account_id: sel.value });
+    } else {
+      expenseUpdates.push({ id: sel.dataset.id, account_id: sel.value });
+    }
+  });
+  if (donorUpdates.length === 0 && expenseUpdates.length === 0) {
+    showToast('Pilih rekening untuk setidaknya satu data terlebih dahulu.', true);
+    return;
+  }
+  try {
+    for (const { id, account_id } of donorUpdates) {
+      const { error } = await adminDb.from('donors').update({ account_id }).eq('id', id);
+      if (error) throw error;
+    }
+    for (const { id, account_id } of expenseUpdates) {
+      const { error } = await adminDb.from('expenses').update({ account_id }).eq('id', id);
+      if (error) throw error;
+    }
+    await logAdminAction('bulk_assign', 'accounts', null, {
+      donors: donorUpdates.length, expenses: expenseUpdates.length,
+    });
+    closeModal();
+    state.accounts.loaded = false;
+    await loadAccountsData();
+    renderAccounts();
+    showToast((donorUpdates.length + expenseUpdates.length) + ' data berhasil diassign ke rekening.');
+  } catch (error) {
+    showToast(error.message || 'Gagal menyimpan data rekening.', true);
+  }
+}
+
 function printFinanceReport() {
   const donors = state.finance.donors;
   const expenses = state.finance.expenses;
