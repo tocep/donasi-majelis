@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <meta name="description" content="Laporan publik donasi pembangunan Majelis Nuruzh Zholam." />
+  <meta name="description" content="Laporan keuangan publik pembangunan Majelis Nuruzh Zholam — pemasukan, pengeluaran, dan saldo per periode." />
   <meta name="theme-color" content="#1a3a5c" />
-  <title>Laporan Donasi Majelis Nuruzh Zholam</title>
+  <title>Laporan Keuangan Majelis Nuruzh Zholam</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a3a5c'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-size='34' fill='white'%3E%E2%98%AA%3C/text%3E%3C/svg%3E" />
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-9VJ2PXP9RM"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-9VJ2PXP9RM');</script>
@@ -36,55 +36,63 @@
   </header>
 
   <main>
-    <section class="section bg-light report-page" id="laporan">
+    <section class="section report-page" id="laporan">
       <div class="container">
-        <div class="section-header report-section-header">
+
+        <div class="report-section-header">
           <p class="admin-kicker">Laporan Publik</p>
-          <h1 class="section-title">Laporan Donasi Majelis Nuruzh Zholam</h1>
-          <p class="section-subtitle" id="laporan-summary">Memuat laporan...</p>
-          <button type="button" class="admin-btn admin-btn-light report-print-btn" onclick="window.print()">Cetak Laporan</button>
+          <h1 class="section-title">Laporan Keuangan Majelis Nuruzh Zholam</h1>
+          <p class="admin-muted" id="pub-period-label">Memuat laporan...</p>
         </div>
 
-        <div class="report-grid">
-          <section class="report-panel report-panel-summary">
-            <div class="panel-heading">
-              <h2>Ringkasan Dana</h2>
-              <span>Terkini</span>
+        <!-- Filter periode -->
+        <div class="admin-card">
+          <div class="admin-card-head">
+            <h2>Filter Periode</h2>
+          </div>
+          <div class="admin-finance-filter">
+            <div class="admin-finance-filter-row">
+              <label>Bulan<select id="pub-month-select"></select></label>
+              <span class="admin-finance-sep">atau</span>
+              <label>Dari Tanggal<input type="date" id="pub-date-from" /></label>
+              <label>Sampai Tanggal<input type="date" id="pub-date-to" /></label>
+              <button type="button" class="admin-btn admin-btn-primary" id="pub-apply-btn">Terapkan</button>
+              <button type="button" class="admin-btn admin-btn-light" id="pub-all-btn">Semua Waktu</button>
             </div>
-            <div class="fund-grid report-fund-grid" id="laporan-fund-grid"></div>
-          </section>
-
-          <section class="report-panel">
-            <div class="panel-heading">
-              <h2>Rincian Kebutuhan Dana</h2>
-              <span>RAB</span>
-            </div>
-            <div class="fund-breakdown report-breakdown" id="laporan-breakdown"></div>
-          </section>
+          </div>
         </div>
 
-        <section class="report-panel">
-          <div class="panel-heading">
-            <h2>Rekap Donasi Bulanan</h2>
-            <span>Grafik</span>
-          </div>
-          <div class="report-chart-wrap">
-            <canvas class="monthly-chart" id="monthly-chart" width="900" height="320"></canvas>
-          </div>
-        </section>
+        <!-- Kartu ringkasan -->
+        <div id="pub-cards"></div>
 
-        <section class="report-panel">
-          <div class="panel-heading">
-            <h2>Riwayat Donatur</h2>
-            <span>Publik</span>
+        <!-- Tabel pemasukan -->
+        <div class="admin-card">
+          <div class="admin-card-head">
+            <h2>Rincian Pemasukan</h2>
+            <span class="admin-muted" id="pub-donors-count"></span>
           </div>
-          <div class="admin-table-wrap report-table-wrap">
-            <table class="admin-table report-table">
-              <thead><tr><th>Nama</th><th>Nominal</th><th>Tanggal</th></tr></thead>
-              <tbody id="laporan-table-body"></tbody>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Tanggal</th><th>Donatur</th><th>Catatan</th><th>Nominal</th></tr></thead>
+              <tbody id="pub-donors-body"></tbody>
             </table>
           </div>
-        </section>
+        </div>
+
+        <!-- Tabel pengeluaran -->
+        <div class="admin-card">
+          <div class="admin-card-head">
+            <h2>Rincian Pengeluaran</h2>
+            <span class="admin-muted" id="pub-expenses-count"></span>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th>Nominal</th></tr></thead>
+              <tbody id="pub-expenses-body"></tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </section>
   </main>

@@ -26,6 +26,15 @@ const state = {
   gallery: [],
   galleryError: '',
   galleryLoaded: false,
+  finance: {
+    loaded: false,
+    error: '',
+    filter: { mode: 'month', yearMonth: null, dateFrom: null, dateTo: null },
+    categories: [],
+    donors: [],
+    expenses: [],
+    prevBalance: 0,
+  },
   modalType: '',
   editingId: null,
 };
@@ -87,12 +96,40 @@ function bindAdminEvents() {
       if (btn.dataset.adminTab === 'gallery' && !state.galleryLoaded && !state.galleryError) {
         retryGalleryLoad();
       }
+      if (btn.dataset.adminTab === 'finance' && !state.finance.loaded && !state.finance.error) {
+        const ym = today().slice(0, 7);
+        state.finance.filter = { mode: 'month', yearMonth: ym, dateFrom: null, dateTo: null };
+        loadAndRenderFinance();
+      }
     });
   });
 
   document.querySelectorAll('[data-open-form]').forEach(btn => {
     btn.addEventListener('click', () => openModal(btn.dataset.openForm));
   });
+
+  document.getElementById('finance-month-select').addEventListener('change', function () {
+    state.finance.filter = { mode: 'month', yearMonth: this.value, dateFrom: null, dateTo: null };
+    loadAndRenderFinance();
+  });
+  document.getElementById('finance-apply-btn').addEventListener('click', function () {
+    const from = document.getElementById('finance-date-from').value;
+    const to = document.getElementById('finance-date-to').value;
+    if (!from || !to) { showToast('Pilih tanggal mulai dan selesai.', true); return; }
+    if (from > to) { showToast('Tanggal mulai tidak boleh setelah tanggal selesai.', true); return; }
+    state.finance.filter = { mode: 'range', yearMonth: null, dateFrom: from, dateTo: to };
+    loadAndRenderFinance();
+  });
+  document.getElementById('finance-all-btn').addEventListener('click', function () {
+    state.finance.filter = { mode: 'all', yearMonth: null, dateFrom: null, dateTo: null };
+    loadAndRenderFinance();
+  });
+  document.getElementById('finance-print-btn').addEventListener('click', printFinanceReport);
+  document.getElementById('finance-csv-btn').addEventListener('click', exportFinanceCsv);
+  document.getElementById('finance-add-expense-btn').addEventListener('click', function () {
+    openModal('expense');
+  });
+  document.getElementById('finance-manage-cat-btn').addEventListener('click', openCategoryManager);
 }
 
 async function handleLogin(event) {
@@ -743,6 +780,29 @@ function modalFieldsHtml(type, item) {
       ${field('Urutan', 'sort_order', 'number', item?.sort_order || 0, true)}
     `;
   }
+  if (type === 'expense') {
+    const rabCats = state.finance.categories.filter(c => c.breakdown_id);
+    const customCats = state.finance.categories.filter(c => !c.breakdown_id);
+    const rabOptions = rabCats.map(c =>
+      `<option value="${escAttr(c.id)}" ${item?.category_id === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`
+    ).join('');
+    const customOptions = customCats.map(c =>
+      `<option value="${escAttr(c.id)}" ${item?.category_id === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`
+    ).join('');
+    return `
+      ${field('Tanggal Pengeluaran', 'expense_date', 'date', item?.expense_date || today(), true)}
+      ${field('Nominal (Rp)', 'amount', 'number', item?.amount || '', true, '1000')}
+      <label>Kategori
+        <select name="category_id" required>
+          <option value="" disabled ${!item ? 'selected' : ''}>— Pilih Kategori —</option>
+          ${rabOptions ? `<optgroup label="Dari Pos RAB">${rabOptions}</optgroup>` : ''}
+          ${customOptions ? `<optgroup label="Kategori Kustom">${customOptions}</optgroup>` : ''}
+        </select>
+      </label>
+      ${field('Keterangan', 'description', 'text', item?.description || '', true)}
+      <label>Catatan<textarea name="notes" rows="3">${escHtml(item?.notes || '')}</textarea></label>
+    `;
+  }
   return '';
 }
 
@@ -754,6 +814,10 @@ async function handleModalSave(event) {
   event.preventDefault();
   const form = new FormData(modalForm);
   const type = state.modalType;
+  if (type === 'expense-category') {
+    await handleCategoryAdd(form);
+    return;
+  }
   let payload = buildPayload(type, form);
   const validation = validatePayload(type, payload);
   if (validation) {
@@ -776,8 +840,13 @@ async function handleModalSave(event) {
     if (result.error) throw result.error;
     await logAdminAction(state.editingId ? 'update' : 'insert', table, state.editingId, payload);
     closeModal();
-    await loadAdminData();
-    renderAdmin();
+    if (type === 'expense') {
+      state.finance.loaded = false;
+      await loadAndRenderFinance();
+    } else {
+      await loadAdminData();
+      renderAdmin();
+    }
     showToast('Data berhasil disimpan.');
   } catch (error) {
     showToast(error.message || 'Gagal menyimpan data.', true);
@@ -847,6 +916,15 @@ function buildPayload(type, form) {
       sort_order: Number(form.get('sort_order') || 0),
     };
   }
+  if (type === 'expense') {
+    return {
+      category_id: clean(form.get('category_id')),
+      expense_date: clean(form.get('expense_date')),
+      amount: Number(form.get('amount')),
+      description: clean(form.get('description')),
+      notes: clean(form.get('notes')),
+    };
+  }
   return {};
 }
 
@@ -874,6 +952,9 @@ function validatePayload(type, payload) {
   }
   if (type === 'gallery' && !payload.caption) {
     return 'Caption foto wajib diisi.';
+  }
+  if (type === 'expense' && (!payload.category_id || !payload.expense_date || payload.amount <= 0 || !payload.description)) {
+    return 'Tanggal, nominal positif, kategori, dan keterangan pengeluaran wajib diisi.';
   }
   return '';
 }
@@ -947,8 +1028,13 @@ async function deleteItem(type, id) {
     return;
   }
   await logAdminAction('delete', tableName(type), id, null);
-  await loadAdminData();
-  renderAdmin();
+  if (type === 'expense') {
+    state.finance.loaded = false;
+    await loadAndRenderFinance();
+  } else {
+    await loadAdminData();
+    renderAdmin();
+  }
   showToast('Data berhasil dihapus.');
 }
 
@@ -1152,6 +1238,7 @@ function collection(type) {
     update: state.updates,
     gallery: state.gallery,
     breakdown_item: Object.values(state.breakdownItems).flat(),
+    expense: state.finance.expenses,
   }[type] || [];
 }
 
@@ -1164,6 +1251,7 @@ function tableName(type) {
     update: 'building_updates',
     gallery: 'gallery_items',
     breakdown_item: 'fund_breakdown_items',
+    expense: 'expenses',
   }[type];
 }
 
@@ -1176,6 +1264,7 @@ function modalLabel(type) {
     update: 'Update Pembangunan',
     gallery: 'Foto Galeri',
     breakdown_item: 'Sub-item RAB',
+    expense: 'Pengeluaran',
   }[type] || 'Data';
 }
 
@@ -1230,4 +1319,393 @@ function authErrorMessage(error) {
     return 'Email admin belum dikonfirmasi di Supabase Auth.';
   }
   return error?.message || 'Login gagal. Coba beberapa saat lagi.';
+}
+
+async function loadAndRenderFinance() {
+  try {
+    if (!state.finance.loaded) {
+      await loadFinanceCategories();
+      await syncRabCategories();
+    }
+    await loadFinanceData();
+    state.finance.loaded = true;
+    state.finance.error = '';
+    renderFinance();
+  } catch (error) {
+    state.finance.error = error.message || 'Laporan keuangan gagal dimuat.';
+    showToast(state.finance.error, true);
+  }
+}
+
+async function loadFinanceCategories() {
+  const { data, error } = await adminDb
+    .from('expense_categories')
+    .select('*')
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  state.finance.categories = data || [];
+}
+
+async function syncRabCategories() {
+  const existingMap = Object.fromEntries(
+    state.finance.categories
+      .filter(c => c.breakdown_id)
+      .map(c => [c.breakdown_id, c])
+  );
+  for (const rab of state.breakdown) {
+    const existing = existingMap[rab.id];
+    if (!existing) {
+      await adminDb.from('expense_categories').insert({
+        name: rab.label,
+        breakdown_id: rab.id,
+        sort_order: rab.sort_order,
+      });
+    } else if (existing.name !== rab.label) {
+      await adminDb.from('expense_categories').update({ name: rab.label }).eq('id', existing.id);
+    }
+  }
+  await loadFinanceCategories();
+}
+
+async function loadFinanceData() {
+  const f = state.finance.filter;
+  let dateFrom = null;
+  let dateTo = null;
+
+  if (f.mode === 'month' && f.yearMonth) {
+    const [y, m] = f.yearMonth.split('-').map(Number);
+    dateFrom = `${f.yearMonth}-01`;
+    const lastDay = new Date(y, m, 0).getDate();
+    dateTo = `${f.yearMonth}-${String(lastDay).padStart(2, '0')}`;
+  } else if (f.mode === 'range') {
+    dateFrom = f.dateFrom;
+    dateTo = f.dateTo;
+  }
+
+  let donorQ = adminDb.from('donors').select('*').order('donation_date', { ascending: false });
+  if (dateFrom) donorQ = donorQ.gte('donation_date', dateFrom);
+  if (dateTo) donorQ = donorQ.lte('donation_date', dateTo);
+
+  let expenseQ = adminDb
+    .from('expenses')
+    .select('*, expense_categories(id, name, breakdown_id)')
+    .order('expense_date', { ascending: false });
+  if (dateFrom) expenseQ = expenseQ.gte('expense_date', dateFrom);
+  if (dateTo) expenseQ = expenseQ.lte('expense_date', dateTo);
+
+  let prevBalance = 0;
+  if (f.mode !== 'all' && dateFrom) {
+    const prevDate = new Date(dateFrom);
+    prevDate.setDate(prevDate.getDate() - 1);
+    const prevTo = prevDate.toISOString().slice(0, 10);
+    const [pd, pe] = await Promise.all([
+      adminDb.from('donors').select('amount').lte('donation_date', prevTo),
+      adminDb.from('expenses').select('amount').lte('expense_date', prevTo),
+    ]);
+    const prevDonors = (pd.data || []).reduce((s, d) => s + Number(d.amount || 0), 0);
+    const prevExp = (pe.data || []).reduce((s, e) => s + Number(e.amount || 0), 0);
+    prevBalance = prevDonors - prevExp;
+  }
+
+  const [donorRes, expenseRes] = await Promise.all([donorQ, expenseQ]);
+  if (donorRes.error) throw donorRes.error;
+  if (expenseRes.error) throw expenseRes.error;
+
+  state.finance.donors = donorRes.data || [];
+  state.finance.expenses = expenseRes.data || [];
+  state.finance.prevBalance = prevBalance;
+}
+
+function renderFinance() {
+  renderFinanceFilter();
+  renderFinanceCards();
+  renderFinanceDonors();
+  renderFinanceExpenses();
+}
+
+function periodLabel(f) {
+  if (f.mode === 'all') return 'Menampilkan: Semua waktu';
+  if (f.mode === 'month' && f.yearMonth) {
+    const d = new Date(f.yearMonth + '-02');
+    return 'Menampilkan: ' + d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  }
+  if (f.mode === 'range') return `Menampilkan: ${formatDate(f.dateFrom)} — ${formatDate(f.dateTo)}`;
+  return '';
+}
+
+function renderFinanceFilter() {
+  const select = document.getElementById('finance-month-select');
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const ym = d.toISOString().slice(0, 7);
+    const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    const sel = state.finance.filter.yearMonth === ym ? 'selected' : '';
+    options.push(`<option value="${escAttr(ym)}" ${sel}>${escHtml(label)}</option>`);
+  }
+  select.innerHTML = options.join('');
+  document.getElementById('finance-period-label').textContent = periodLabel(state.finance.filter);
+  if (state.finance.filter.dateFrom) document.getElementById('finance-date-from').value = state.finance.filter.dateFrom;
+  if (state.finance.filter.dateTo) document.getElementById('finance-date-to').value = state.finance.filter.dateTo;
+}
+
+function renderFinanceCards() {
+  const donors = state.finance.donors;
+  const expenses = state.finance.expenses;
+  const prev = state.finance.prevBalance;
+  const masuk = donors.reduce((s, d) => s + Number(d.amount || 0), 0);
+  const keluar = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const saldo = prev + masuk - keluar;
+
+  document.getElementById('finance-cards').innerHTML = `
+    <div class="admin-finance-formula">
+      <div class="admin-finance-formula-item">
+        <strong>${escHtml(formatRupiah(prev))}</strong>
+        <span>Sisa Bulan Lalu</span>
+      </div>
+      <span class="admin-finance-op">+</span>
+      <div class="admin-finance-formula-item">
+        <strong>${escHtml(formatRupiah(masuk))}</strong>
+        <span>Total Pemasukan</span>
+      </div>
+      <span class="admin-finance-op">&minus;</span>
+      <div class="admin-finance-formula-item">
+        <strong>${escHtml(formatRupiah(keluar))}</strong>
+        <span>Total Pengeluaran</span>
+      </div>
+      <span class="admin-finance-op admin-finance-eq">=</span>
+      <div class="admin-finance-formula-item admin-finance-result">
+        <strong>${escHtml(formatRupiah(saldo))}</strong>
+        <span>Saldo Akhir</span>
+      </div>
+    </div>
+    <div class="admin-finance-summary">
+      <div class="admin-finance-card finance-prev">
+        <span>Sisa Bulan Lalu</span>
+        <strong>${escHtml(formatRupiah(prev))}</strong>
+      </div>
+      <div class="admin-finance-card finance-in">
+        <span>Total Pemasukan</span>
+        <strong>${escHtml(formatRupiah(masuk))}</strong>
+        <small>${donors.length} donasi</small>
+      </div>
+      <div class="admin-finance-card finance-out">
+        <span>Total Pengeluaran</span>
+        <strong>${escHtml(formatRupiah(keluar))}</strong>
+        <small>${expenses.length} transaksi</small>
+      </div>
+      <div class="admin-finance-card finance-end">
+        <span>Saldo Akhir Periode</span>
+        <strong>${escHtml(formatRupiah(saldo))}</strong>
+      </div>
+    </div>
+  `;
+}
+
+function renderFinanceDonors() {
+  const donors = state.finance.donors;
+  const total = donors.reduce((s, d) => s + Number(d.amount || 0), 0);
+  document.getElementById('finance-donors-count').textContent = `${donors.length} donasi`;
+  const rows = donors.map(d => `
+    <tr>
+      <td>${escHtml(formatDate(d.donation_date))}</td>
+      <td>${escHtml(d.is_anonymous ? 'Hamba Allah' : d.name)}</td>
+      <td>${escHtml(d.notes || '—')}</td>
+      <td class="finance-amount-in">${escHtml(formatRupiah(d.amount))}</td>
+    </tr>
+  `).join('');
+  const totalRow = `<tr class="admin-table-total"><td colspan="3">Total Pemasukan</td><td class="finance-amount-in">${escHtml(formatRupiah(total))}</td></tr>`;
+  document.getElementById('finance-donors-body').innerHTML = rows
+    ? rows + totalRow
+    : emptyRow(4, 'Tidak ada pemasukan pada periode ini.');
+}
+
+function renderFinanceExpenses() {
+  const expenses = state.finance.expenses;
+  const total = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const rows = expenses.map(e => {
+    const cat = e.expense_categories;
+    const isRab = cat && cat.breakdown_id;
+    const badge = cat
+      ? `<span class="admin-cat-badge ${isRab ? 'rab' : 'custom'}">${escHtml(cat.name)}</span>`
+      : '—';
+    return `<tr>
+      <td>${escHtml(formatDate(e.expense_date))}</td>
+      <td>${badge}</td>
+      <td>${escHtml(e.description)}</td>
+      <td class="finance-amount-out">${escHtml(formatRupiah(e.amount))}</td>
+      <td>${rowActions('expense', e.id)}</td>
+    </tr>`;
+  }).join('');
+  const totalRow = `<tr class="admin-table-total"><td colspan="3">Total Pengeluaran</td><td class="finance-amount-out">${escHtml(formatRupiah(total))}</td><td></td></tr>`;
+  document.getElementById('finance-expenses-body').innerHTML = rows
+    ? rows + totalRow
+    : emptyRow(5, 'Tidak ada pengeluaran pada periode ini.');
+  bindRowActions();
+}
+
+function openCategoryManager() {
+  state.modalType = 'expense-category';
+  state.editingId = null;
+  modalTitle.textContent = 'Kelola Kategori Pengeluaran';
+  modalFields.innerHTML = categoryManagerHtml();
+  bindCategoryManagerEvents();
+  modal.showModal();
+}
+
+function categoryManagerHtml() {
+  const rabCats = state.finance.categories.filter(c => c.breakdown_id);
+  const customCats = state.finance.categories.filter(c => !c.breakdown_id);
+
+  const rabRows = rabCats.map(c => `
+    <div class="admin-cat-manager-item">
+      <span class="admin-cat-badge rab">${escHtml(c.name)}</span>
+      <span class="admin-muted">Dari RAB</span>
+    </div>
+  `).join('') || '<p class="admin-muted">Belum ada kategori dari RAB.</p>';
+
+  const customRows = customCats.map(c => `
+    <div class="admin-cat-manager-item">
+      <span class="admin-cat-badge custom">${escHtml(c.name)}</span>
+      <button type="button" class="admin-btn admin-btn-light" style="padding:4px 10px;font-size:11px" data-delete-cat="${escAttr(c.id)}">Hapus</button>
+    </div>
+  `).join('') || '<p class="admin-muted">Belum ada kategori kustom.</p>';
+
+  return `
+    <p class="admin-muted" style="margin-bottom:8px">Kategori dari RAB tidak dapat dihapus di sini.</p>
+    <div class="admin-cat-manager-list">${rabRows}${customRows}</div>
+    <hr style="margin:12px 0;border:none;border-top:1px dashed #e0e0e0" />
+    <label>Nama Kategori Baru
+      <input type="text" name="cat_name" placeholder="cth: Honorarium, Konsumsi tukang..." />
+    </label>
+  `;
+}
+
+function bindCategoryManagerEvents() {
+  modalFields.querySelectorAll('[data-delete-cat]').forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm('Hapus kategori ini? Pastikan tidak ada pengeluaran yang menggunakannya.')) return;
+      const { error } = await adminDb.from('expense_categories').delete().eq('id', btn.dataset.deleteCat);
+      if (error) { showToast(error.message || 'Gagal menghapus kategori.', true); return; }
+      await loadFinanceCategories();
+      modalFields.innerHTML = categoryManagerHtml();
+      bindCategoryManagerEvents();
+      showToast('Kategori berhasil dihapus.');
+    };
+  });
+}
+
+async function handleCategoryAdd(form) {
+  const name = clean(form.get('cat_name'));
+  if (!name) { showToast('Nama kategori wajib diisi.', true); return; }
+  const { error } = await adminDb.from('expense_categories').insert({ name, sort_order: 99 });
+  if (error) { showToast(error.message || 'Gagal menambah kategori.', true); return; }
+  await loadFinanceCategories();
+  modalFields.innerHTML = categoryManagerHtml();
+  bindCategoryManagerEvents();
+  showToast('Kategori berhasil ditambah.');
+}
+
+function printFinanceReport() {
+  const donors = state.finance.donors;
+  const expenses = state.finance.expenses;
+  const prev = state.finance.prevBalance;
+  const masuk = donors.reduce((s, d) => s + Number(d.amount || 0), 0);
+  const keluar = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const saldo = prev + masuk - keluar;
+  const period = periodLabel(state.finance.filter).replace('Menampilkan: ', '');
+  const majelisName = escHtml((state.settings || {}).majelis_name || 'Majelis');
+
+  const donorRows = donors.map(d =>
+    `<tr><td>${escHtml(formatDate(d.donation_date))}</td><td>${escHtml(d.is_anonymous ? 'Hamba Allah' : d.name)}</td><td>${escHtml(d.notes || '-')}</td><td style="text-align:right;color:#2e7d32">${escHtml(formatRupiah(d.amount))}</td></tr>`
+  ).join('') || '<tr><td colspan="4" style="text-align:center;color:#aaa">Tidak ada pemasukan.</td></tr>';
+
+  const expenseRows = expenses.map(e => {
+    const cat = e.expense_categories;
+    return `<tr><td>${escHtml(formatDate(e.expense_date))}</td><td>${escHtml(cat ? cat.name : '-')}</td><td>${escHtml(e.description)}</td><td style="text-align:right;color:#e65100">${escHtml(formatRupiah(e.amount))}</td></tr>`;
+  }).join('') || '<tr><td colspan="4" style="text-align:center;color:#aaa">Tidak ada pengeluaran.</td></tr>';
+
+  const html = [
+    '<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"/>',
+    `<title>Laporan Keuangan ${escHtml(period)}</title>`,
+    '<style>',
+    'body{font-family:Arial,sans-serif;color:#222;font-size:13px;padding:24px}',
+    'h1{color:#1a3a5c;font-size:20px;margin:0}.sub{color:#555;margin-top:4px}.meta{color:#999;font-size:11px;margin-top:2px}',
+    '.header{text-align:center;border-bottom:2px solid #1a3a5c;padding-bottom:14px;margin-bottom:18px}',
+    '.cards{display:flex;gap:10px;margin-bottom:18px}',
+    '.card{flex:1;border-radius:6px;padding:10px;text-align:center}',
+    '.card span{display:block;font-size:10px;text-transform:uppercase;color:#555;font-weight:700}',
+    '.card strong{display:block;font-size:15px;font-weight:800;margin-top:3px}',
+    '.c1{background:#f3e5f5}.c1 strong{color:#6a1b9a}',
+    '.c2{background:#e8f4fe}.c2 strong{color:#1565c0}',
+    '.c3{background:#fff3e0}.c3 strong{color:#e65100}',
+    '.c4{background:#e8f5e9}.c4 strong{color:#2e7d32}',
+    'h3{font-size:11px;text-transform:uppercase;color:#888;margin:14px 0 6px}',
+    'table{width:100%;border-collapse:collapse;font-size:12px}',
+    'th{background:#f7f8fa;text-align:left;padding:6px 8px;border-bottom:2px solid #ddd;font-size:10px;font-weight:700;text-transform:uppercase;color:#888}',
+    'td{padding:5px 8px;border-bottom:1px solid #eee}',
+    'tfoot td{font-weight:700;background:#f7f8fa;border-top:2px solid #ddd}',
+    '</style></head><body>',
+    '<div class="header">',
+    `<h1>${majelisName}</h1>`,
+    `<p class="sub">Laporan Keuangan — ${escHtml(period)}</p>`,
+    `<p class="meta">Dicetak: ${escHtml(formatDate(today()))}</p>`,
+    '</div>',
+    '<div class="cards">',
+    `<div class="card c1"><span>Sisa Bulan Lalu</span><strong>${escHtml(formatRupiah(prev))}</strong></div>`,
+    `<div class="card c2"><span>Total Pemasukan</span><strong>${escHtml(formatRupiah(masuk))}</strong></div>`,
+    `<div class="card c3"><span>Total Pengeluaran</span><strong>${escHtml(formatRupiah(keluar))}</strong></div>`,
+    `<div class="card c4"><span>Saldo Akhir</span><strong>${escHtml(formatRupiah(saldo))}</strong></div>`,
+    '</div>',
+    `<h3>Rincian Pemasukan (${donors.length} donasi)</h3>`,
+    '<table><thead><tr><th>Tanggal</th><th>Donatur</th><th>Catatan</th><th style="text-align:right">Nominal</th></tr></thead>',
+    `<tbody>${donorRows}</tbody>`,
+    `<tfoot><tr><td colspan="3">Total</td><td style="text-align:right;color:#2e7d32">${escHtml(formatRupiah(masuk))}</td></tr></tfoot></table>`,
+    `<h3>Rincian Pengeluaran (${expenses.length} transaksi)</h3>`,
+    '<table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th style="text-align:right">Nominal</th></tr></thead>',
+    `<tbody>${expenseRows}</tbody>`,
+    `<tfoot><tr><td colspan="3">Total</td><td style="text-align:right;color:#e65100">${escHtml(formatRupiah(keluar))}</td></tr></tfoot></table>`,
+    '</body></html>',
+  ].join('');
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) { showToast('Pop-up diblokir browser. Izinkan pop-up untuk halaman ini.', true); URL.revokeObjectURL(url); return; }
+  win.addEventListener('load', function () {
+    win.print();
+    URL.revokeObjectURL(url);
+  });
+}
+
+function exportFinanceCsv() {
+  const f = state.finance.filter;
+  const period = (f.mode === 'month' && f.yearMonth)
+    ? f.yearMonth
+    : (f.mode === 'range' ? `${f.dateFrom}_${f.dateTo}` : 'semua-waktu');
+
+  const donorRows = [['Tanggal', 'Donatur', 'Catatan', 'Nominal']];
+  state.finance.donors.forEach(d => {
+    donorRows.push([d.donation_date, d.is_anonymous ? 'Hamba Allah' : d.name, d.notes || '', d.amount]);
+  });
+  downloadCsv(donorRows, `pemasukan-${period}.csv`);
+
+  const expenseRows = [['Tanggal', 'Kategori', 'Keterangan', 'Nominal']];
+  state.finance.expenses.forEach(e => {
+    expenseRows.push([e.expense_date, e.expense_categories ? e.expense_categories.name : '', e.description, e.amount]);
+  });
+  downloadCsv(expenseRows, `pengeluaran-${period}.csv`);
+}
+
+function downloadCsv(rows, filename) {
+  const bom = '﻿';
+  const csv = bom + rows.map(row => row.map(csvCell).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }

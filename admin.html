@@ -51,6 +51,7 @@
         <button type="button" class="admin-tab" data-admin-tab="confirmations">Konfirmasi</button>
         <button type="button" class="admin-tab" data-admin-tab="report">Laporan Dana</button>
         <button type="button" class="admin-tab" data-admin-tab="breakdown">RAB</button>
+        <button type="button" class="admin-tab" data-admin-tab="finance">Lap. Keuangan</button>
         <button type="button" class="admin-tab" data-admin-tab="payments">Metode Donasi</button>
         <button type="button" class="admin-tab" data-admin-tab="contacts">Kontak</button>
         <button type="button" class="admin-tab" data-admin-tab="updates">Update Pembangunan</button>
@@ -145,6 +146,79 @@
           </div>
         </div>
       </section>
+
+      <section class="admin-panel" id="panel-finance">
+
+  <!-- Filter periode -->
+  <div class="admin-card">
+    <div class="admin-card-head">
+      <h2>Laporan Keuangan</h2>
+      <div class="admin-card-actions">
+        <button type="button" class="admin-btn admin-btn-light" id="finance-print-btn">Cetak Laporan</button>
+        <button type="button" class="admin-btn admin-btn-light" id="finance-csv-btn">Export CSV</button>
+      </div>
+    </div>
+    <div class="admin-finance-filter">
+      <div class="admin-finance-filter-row">
+        <label>
+          Bulan
+          <select id="finance-month-select"></select>
+        </label>
+        <span class="admin-finance-sep">atau</span>
+        <label>
+          Dari Tanggal
+          <input type="date" id="finance-date-from" />
+        </label>
+        <label>
+          Sampai Tanggal
+          <input type="date" id="finance-date-to" />
+        </label>
+        <button type="button" class="admin-btn admin-btn-primary" id="finance-apply-btn">Terapkan</button>
+        <button type="button" class="admin-btn admin-btn-light" id="finance-all-btn">Semua Waktu</button>
+      </div>
+      <p class="admin-muted" id="finance-period-label"></p>
+    </div>
+  </div>
+
+  <!-- Kartu ringkasan -->
+  <div id="finance-cards"></div>
+
+  <!-- Tabel rincian pemasukan -->
+  <div class="admin-card">
+    <div class="admin-card-head">
+      <h2>Rincian Pemasukan</h2>
+      <span class="admin-muted" id="finance-donors-count"></span>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Tanggal</th><th>Donatur</th><th>Catatan</th><th>Nominal</th></tr>
+        </thead>
+        <tbody id="finance-donors-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tabel rincian pengeluaran -->
+  <div class="admin-card">
+    <div class="admin-card-head">
+      <h2>Rincian Pengeluaran</h2>
+      <div class="admin-card-actions">
+        <button type="button" class="admin-btn admin-btn-light" id="finance-manage-cat-btn">Kelola Kategori</button>
+        <button type="button" class="admin-btn admin-btn-primary" id="finance-add-expense-btn">+ Tambah Pengeluaran</button>
+      </div>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th>Nominal</th><th>Aksi</th></tr>
+        </thead>
+        <tbody id="finance-expenses-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</section>
 
       <section class="admin-panel" id="panel-payments">
         <div class="admin-card">
