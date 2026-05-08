@@ -26,6 +26,14 @@ const state = {
   gallery: [],
   galleryError: '',
   galleryLoaded: false,
+  accounts: {
+    list: [],
+    transfers: [],
+    allDonors: [],
+    allExpenses: [],
+    loaded: false,
+    error: '',
+  },
   finance: {
     loaded: false,
     error: '',
@@ -101,6 +109,9 @@ function bindAdminEvents() {
         state.finance.filter = { mode: 'month', yearMonth: ym, dateFrom: null, dateTo: null };
         loadAndRenderFinance();
       }
+      if (btn.dataset.adminTab === 'accounts' && !state.accounts.loaded && !state.accounts.error) {
+        loadAccountsSection();
+      }
     });
   });
 
@@ -130,6 +141,8 @@ function bindAdminEvents() {
     openModal('expense');
   });
   document.getElementById('finance-manage-cat-btn').addEventListener('click', openCategoryManager);
+  document.getElementById('accounts-migrate-btn').addEventListener('click', openMigrateModal);
+  document.getElementById('accounts-transfer-btn').addEventListener('click', () => openModal('transfer'));
 }
 
 async function handleLogin(event) {
@@ -271,6 +284,12 @@ async function loadAdminData() {
   });
   state.payments = paymentsRes.data || [];
   state.contacts = contactsRes.data || [];
+  const accountsRes = await runAdminQuery(
+    'accounts',
+    adminDb.from('accounts').select('*').order('sort_order', { ascending: true })
+  );
+  state.accounts.list = accountsRes.data || [];
+  state.accounts.loaded = false;
   state.updates = [];
   state.updatesError = '';
   state.updatesLoaded = false;
@@ -340,6 +359,46 @@ async function loadUpdatesData({ optional = false } = {}) {
     state.updatesError = error.message || 'Update pembangunan belum dapat dimuat.';
     state.updatesLoaded = false;
     if (!optional) throw error;
+  }
+}
+
+async function loadAccountsData() {
+  const [transfersRes, donorsRes, expensesRes] = await Promise.all([
+    adminDb.from('account_transfers').select('*').order('transfer_date', { ascending: false }),
+    adminDb.from('donors').select('id, amount, account_id'),
+    adminDb.from('expenses').select('id, amount, account_id'),
+  ]);
+  if (transfersRes.error) throw transfersRes.error;
+  if (donorsRes.error) throw donorsRes.error;
+  if (expensesRes.error) throw expensesRes.error;
+  state.accounts.transfers = transfersRes.data || [];
+  state.accounts.allDonors = donorsRes.data || [];
+  state.accounts.allExpenses = expensesRes.data || [];
+  state.accounts.error = '';
+  state.accounts.loaded = true;
+}
+
+async function loadAccountsSection() {
+  try {
+    await loadAccountsData();
+    renderAccounts();
+  } catch (error) {
+    state.accounts.error = error.message || 'Data rekening belum dapat dimuat.';
+    renderAccounts();
+  }
+}
+
+async function retryAccountsLoad() {
+  state.accounts.error = '';
+  renderAccounts();
+  try {
+    await loadAccountsData();
+    renderAccounts();
+    showToast('Data rekening berhasil dimuat.');
+  } catch (error) {
+    state.accounts.error = error.message || 'Data rekening belum dapat dimuat.';
+    renderAccounts();
+    showToast(state.accounts.error, true);
   }
 }
 
@@ -818,6 +877,10 @@ async function handleModalSave(event) {
     await handleCategoryAdd(form);
     return;
   }
+  if (type === 'migrate-accounts') {
+    await saveMigrateData();
+    return;
+  }
   let payload = buildPayload(type, form);
   const validation = validatePayload(type, payload);
   if (validation) {
@@ -840,10 +903,18 @@ async function handleModalSave(event) {
     if (result.error) throw result.error;
     await logAdminAction(state.editingId ? 'update' : 'insert', table, state.editingId, payload);
     closeModal();
-    if (type === 'expense') {
+    if (type === 'account' || type === 'transfer') {
+      const accRes = await adminDb.from('accounts').select('*').order('sort_order', { ascending: true });
+      if (!accRes.error) state.accounts.list = accRes.data || [];
+      state.accounts.loaded = false;
+      await loadAccountsData();
+      renderAccounts();
+    } else if (type === 'expense') {
       state.finance.loaded = false;
+      state.accounts.loaded = false;
       await loadAndRenderFinance();
     } else {
+      state.accounts.loaded = false;
       await loadAdminData();
       renderAdmin();
     }
@@ -1030,8 +1101,14 @@ async function deleteItem(type, id) {
   await logAdminAction('delete', tableName(type), id, null);
   if (type === 'expense') {
     state.finance.loaded = false;
+    state.accounts.loaded = false;
     await loadAndRenderFinance();
+  } else if (type === 'transfer') {
+    state.accounts.loaded = false;
+    await loadAccountsData();
+    renderAccounts();
   } else {
+    state.accounts.loaded = false;
     await loadAdminData();
     renderAdmin();
   }
@@ -1239,6 +1316,8 @@ function collection(type) {
     gallery: state.gallery,
     breakdown_item: Object.values(state.breakdownItems).flat(),
     expense: state.finance.expenses,
+    account: state.accounts.list,
+    transfer: state.accounts.transfers,
   }[type] || [];
 }
 
@@ -1252,6 +1331,8 @@ function tableName(type) {
     gallery: 'gallery_items',
     breakdown_item: 'fund_breakdown_items',
     expense: 'expenses',
+    account: 'accounts',
+    transfer: 'account_transfers',
   }[type];
 }
 
@@ -1265,6 +1346,8 @@ function modalLabel(type) {
     gallery: 'Foto Galeri',
     breakdown_item: 'Sub-item RAB',
     expense: 'Pengeluaran',
+    account: 'Rekening',
+    transfer: 'Transfer',
   }[type] || 'Data';
 }
 
